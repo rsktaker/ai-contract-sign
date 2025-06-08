@@ -1,7 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import ContractBlock from "@/components/ContractBlock";
+import SignatureModal from "@/components/SignatureModal";
+import ContractSummary from "@/components/ContractSummary";
+
 import Link from "next/link";
 
 export default function NewContractPage() {
