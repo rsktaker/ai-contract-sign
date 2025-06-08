@@ -34,12 +34,11 @@ export default function NewContractPage() {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/contracts/generate-from-prompt", {
+      const response = await fetch("/api/contracts/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prompt: prompt.trim(),
-          contractType: contractType === "auto-detect" ? null : contractType,
         }),
       });
 
@@ -58,17 +57,6 @@ export default function NewContractPage() {
     }
   };
 
-  const examplePrompts = [
-    "Create a freelance web development contract for building an e-commerce website. Payment is $5,000 in two milestones. Client is ABC Corp, developer is John Smith. 6-week timeline.",
-    "Generate an NDA between TechCorp and Jane Doe for sharing confidential product information. 2-year term, mutual disclosure.",
-    "Service agreement for monthly social media management. $2,000/month, 6-month initial term with auto-renewal. Company: Marketing Plus, Client: Local Restaurant.",
-    "Employment contract for Senior Software Engineer position. $120,000 salary, remote work allowed, standard benefits, 2-week notice period.",
-    "Lease agreement for office space at 123 Business Ave. $3,000/month, 2-year term, tenant improvements allowed."
-  ];
-
-  const insertExamplePrompt = (example: string) => {
-    setPrompt(example);
-  };
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -94,26 +82,7 @@ export default function NewContractPage() {
           onSubmit={handleSubmit}
           className="bg-white rounded-lg shadow-md p-6 space-y-6"
         >
-          {/* Contract Type (Optional) */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Contract Type (Optional)
-            </label>
-            <select
-              value={contractType}
-              onChange={(e) => setContractType(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              {Object.entries(contractTypes).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-gray-500 mt-1">
-              Leave as "Auto-detect" to let AI determine the contract type from your description
-            </p>
-          </div>
+          
 
           {/* Contract Description */}
           <div>
@@ -124,14 +93,7 @@ export default function NewContractPage() {
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               className="w-full p-4 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 h-40 resize-none"
-              placeholder="Describe the contract you need in detail. Include:
-• Type of agreement (service, NDA, employment, etc.)
-• Parties involved (names, companies, roles)
-• Key terms (payment, timeline, deliverables)
-• Special requirements or conditions
-• Any specific clauses you need
-
-Example: 'Create a freelance contract between ABC Corp and John Smith for website development. $5,000 payment in two milestones, 6-week timeline, includes hosting setup and training.'"
+              placeholder="Create a freelance contract between ABC Corp and John Smith for website development. $5,000 payment in two milestones, 6-week timeline, includes hosting setup and training."
               required
             />
             <div className="text-sm text-gray-500 mt-2 flex justify-between">
@@ -140,22 +102,7 @@ Example: 'Create a freelance contract between ABC Corp and John Smith for websit
             </div>
           </div>
 
-          {/* Example Prompts */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h3 className="font-medium text-blue-900 mb-3">Example Prompts</h3>
-            <div className="space-y-2">
-              {examplePrompts.map((example, index) => (
-                <button
-                  key={index}
-                  type="button"
-                  onClick={() => insertExamplePrompt(example)}
-                  className="block w-full text-left p-2 text-sm text-blue-700 bg-white border border-blue-200 rounded hover:bg-blue-50 transition-colors"
-                >
-                  {example}
-                </button>
-              ))}
-            </div>
-          </div>
+          
 
           {/* AI Info Box */}
           <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-4">
@@ -236,60 +183,6 @@ Example: 'Create a freelance contract between ABC Corp and John Smith for websit
             </button>
           </div>
         </form>
-
-        {/* Help Section */}
-        <div className="mt-8 bg-white rounded-lg shadow-sm p-6 border">
-          <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
-            <svg className="h-5 w-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-            </svg>
-            Tips for Better AI-Generated Contracts
-          </h3>
-          <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <h4 className="font-medium text-gray-800 mb-2">Include These Details:</h4>
-              <ul className="space-y-1 text-sm text-gray-600">
-                <li className="flex items-start">
-                  <span className="text-green-500 mr-2 mt-0.5">•</span>
-                  Full names and company details of all parties
-                </li>
-                <li className="flex items-start">
-                  <span className="text-green-500 mr-2 mt-0.5">•</span>
-                  Specific payment amounts and schedules
-                </li>
-                <li className="flex items-start">
-                  <span className="text-green-500 mr-2 mt-0.5">•</span>
-                  Clear deliverables and milestones
-                </li>
-                <li className="flex items-start">
-                  <span className="text-green-500 mr-2 mt-0.5">•</span>
-                  Timeline and important dates
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-medium text-gray-800 mb-2">For Best Results:</h4>
-              <ul className="space-y-1 text-sm text-gray-600">
-                <li className="flex items-start">
-                  <span className="text-blue-500 mr-2 mt-0.5">•</span>
-                  Be specific about terms and conditions
-                </li>
-                <li className="flex items-start">
-                  <span className="text-blue-500 mr-2 mt-0.5">•</span>
-                  Mention any special requirements
-                </li>
-                <li className="flex items-start">
-                  <span className="text-blue-500 mr-2 mt-0.5">•</span>
-                  Include jurisdiction or governing law
-                </li>
-                <li className="flex items-start">
-                  <span className="text-blue-500 mr-2 mt-0.5">•</span>
-                  Note any industry-specific needs
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );
