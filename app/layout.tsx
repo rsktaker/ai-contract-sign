@@ -5,7 +5,7 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata = {
-  title: 'Sherkolit - AI-Powered Contract Generation',
+  title: 'DreamSign - AI-Powered Contract Generation',
   description: 'Create professional, legally-structured contracts in minutes with AI',
 };
 
@@ -29,7 +29,7 @@ export default function RootLayout({
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                   </div>
-                  <span className="text-xl font-bold text-gray-900">Sherkolit</span>
+                  <span className="text-xl font-bold text-gray-900">DreamSign</span>
                 </Link>
 
                 {/* Navigation */}
@@ -93,7 +93,7 @@ export default function RootLayout({
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
                     </div>
-                    <span className="text-xl font-bold">Sherkolit</span>
+                    <span className="text-xl font-bold">DreamSign</span>
                   </div>
                   <p className="text-gray-400 mb-4 max-w-md">
                     AI-powered contract generation platform that helps professionals create legally-structured contracts in minutes.
@@ -143,7 +143,7 @@ export default function RootLayout({
               {/* Bottom Footer */}
               <div className="border-t border-gray-800 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
                 <p className="text-gray-400 text-sm">
-                  © 2025 Sherkolit. All rights reserved.
+                  © 2025 DreamSign. All rights reserved.
                 </p>
                 <div className="flex space-x-6 mt-4 md:mt-0">
                   <Link href="/terms" className="text-gray-400 hover:text-white text-sm transition-colors">

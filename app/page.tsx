@@ -11,7 +11,7 @@ export default function HomePage() {
     // Newsletter signup logic would go here
     console.log('Newsletter signup:', email);
     setEmail('');
-    alert('Thank you for subscribing to Sherkolit updates!');
+    alert('Thank you for subscribing to DreamSign updates!');
   };
 
   return (
@@ -24,7 +24,7 @@ export default function HomePage() {
               AI-Powered Contract Generation
             </h1>
             <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-              Create professional, legally-structured contracts in minutes with Sherkolit's intelligent contract generator. 
+              Create professional, legally-structured contracts in minutes with DreamSign's intelligent contract generator. 
               From service agreements to NDAs, we've got you covered.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -50,7 +50,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Why Choose Sherkolit?
+              Why Choose DreamSign?
             </h2>
             <p className="text-gray-600 text-lg max-w-2xl mx-auto">
               Our AI-powered platform makes contract creation simple, fast, and reliable
@@ -170,7 +170,7 @@ export default function HomePage() {
             Ready to Create Your Contract?
           </h2>
           <p className="text-blue-100 text-lg mb-8">
-            Join thousands of professionals who trust Sherkolit for their contract needs
+            Join thousands of professionals who trust DreamSign for their contract needs
           </p>
           <Link
             href="/contracts/new"
@@ -185,7 +185,7 @@ export default function HomePage() {
       <div className="bg-white py-16">
         <div className="max-w-4xl mx-auto px-4 text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">
-            Stay Updated with Sherkolit
+            Stay Updated with DreamSign
           </h2>
           <p className="text-gray-600 mb-8">
             Get the latest updates on new features, legal insights, and contract templates

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import ContractBlock from '@/components/ContractBlock';
 import SignatureModal from '@/components/SignatureModal';
-import { sendFinalizedContractEmail } from '@/lib/mailer';
+// Removed direct mailer import - will use API route instead
 
 interface Contract {
   _id: string;
@@ -133,8 +133,23 @@ export default function SignContractPage() {
       setError('An error occurred while signing. Please try again.');
     }
 
+    // Send finalized contract email via API route
     if (contract) {
-      await sendFinalizedContractEmail(params.id as string, contractJson, contract.recipientEmail);
+      try {
+        await fetch(`/api/contracts/${params.id}/finalize`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contractJson,
+            recipientEmail: contract.recipientEmail
+          }),
+        });
+      } catch (error) {
+        console.error('Error sending finalized contract email:', error);
+        // Don't block the user flow if email fails
+      }
     }
 
   };
@@ -144,12 +159,12 @@ export default function SignContractPage() {
   if (!contract || !contractJson) return <div className="p-8">Contract not found</div>;
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
-      <div className="flex justify-center px-8 py-6">
+    <div className="flex flex-col h-[calc(100vh-4rem)] bg-gray-50">
+      <div className="flex justify-center px-8 py-6 h-full">
         {/* Contract Display - 7/12 width, centered */}
-        <div className="w-7/12">
-          {/* Header */}
-          <div className="mb-6 bg-white rounded-lg p-6 shadow-md">
+        <div className="w-7/12 h-full flex flex-col">
+          {/* Header - Fixed */}
+          <div className="mb-6 bg-white rounded-lg p-6 shadow-md flex-shrink-0">
             <h1 className="text-3xl font-bold mb-2">
               Sign Contract
             </h1>
@@ -158,9 +173,9 @@ export default function SignContractPage() {
             </p>
           </div>
 
-          {/* Error Display */}
+          {/* Error Display - Fixed */}
           {error && (
-            <div className="mb-6 bg-red-50 border border-red-200 rounded-md p-4">
+            <div className="mb-6 bg-red-50 border border-red-200 rounded-md p-4 flex-shrink-0">
               <div className="flex">
                 <div className="flex-shrink-0">
                   <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
@@ -174,26 +189,28 @@ export default function SignContractPage() {
             </div>
           )}
 
-          {/* Contract Blocks */}
-          <div className="space-y-2">
-            {contractJson.blocks.map((block, i) => (
-              <ContractBlock
-                key={i}
-                block={block}
-                blockIndex={i}
-                currentParty={currentParty}
-                onSignatureClick={(signatureIndex: number) => {
-                  const signature = block.signatures[signatureIndex];
-                  if (signature.party !== currentParty) return;
-                  setShowSignatureFor({ blockIndex: i, signatureIndex });
-                }}
-                onRegenerate={() => {}} // Disabled for signing
-              />
-            ))}
+          {/* Contract Blocks - Scrollable */}
+          <div className="flex-1 overflow-y-auto pb-4 pr-2">
+            <div className="space-y-2">
+              {contractJson.blocks.map((block, i) => (
+                <ContractBlock
+                  key={i}
+                  block={block}
+                  blockIndex={i}
+                  currentParty={currentParty}
+                  onSignatureClick={(signatureIndex: number) => {
+                    const signature = block.signatures[signatureIndex];
+                    if (signature.party !== currentParty) return;
+                    setShowSignatureFor({ blockIndex: i, signatureIndex });
+                  }}
+                  onRegenerate={() => {}} // Disabled for signing
+                />
+              ))}
+            </div>
           </div>
 
-          {/* Finalize Contract Button */}
-          <div className="mt-8 bg-white rounded-lg p-6 shadow-md">
+          {/* Finalize Contract Button - Fixed at Bottom */}
+          <div className="mt-4 bg-white rounded-lg p-6 shadow-md flex-shrink-0">
             <button
               onClick={handleFinalizeContract}
               className="w-full py-4 bg-green-600 text-white rounded-md hover:bg-green-700 transition text-lg font-semibold"
