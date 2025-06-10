@@ -10,7 +10,9 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "@headlessui/react": "^2.2.4",
     "@types/nodemailer": "^6.4.17",
+    "@types/puppeteer": "^7.0.4",
     "@types/uuid": "^10.0.0",
     "anthropic": "^0.0.0",
     "bcryptjs": "^3.0.2",
@@ -20,8 +22,11 @@
     "next-auth": "^4.24.11",
     "nodemailer": "^6.10.1",
     "openai": "^5.1.1",
+    "puppeteer": "^24.10.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "react-signature-canvas": "^1.0.6",
+    "signature_pad": "^5.0.9"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

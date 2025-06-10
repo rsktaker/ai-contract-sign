@@ -3,7 +3,6 @@
 
 import { useState } from "react";
 import { Dialog, DialogPanel, DialogBackdrop, DialogTitle } from "@headlessui/react";
-import { server_log } from '@/app/actions/log';
 
 export default function ContractBlock({
   block,
@@ -20,62 +19,63 @@ export default function ContractBlock({
 
   const renderBlockText = () => {
     const text = block.text;
-    const underscorePattern = /_{20}/g; // Matches 10 or 20 underscores
+    const underscorePattern = /_{20}/g; // Matches 20 underscores
     const parts = [];
     let lastIndex = 0;
     let match;
-    let signatureIndex = 0;
-    let signatures = block.signatures[signatureIndex];
+    let whichSignature = 0;
 
-    server_log(`Block ${blockIndex} text analysis:`, {
+    // Debug log
+    console.log(`Block ${blockIndex} text analysis:`, {
       textLength: text.length,
       signatureCount: block.signatures.length,
-      signatures: block.signatures
+      signatures: block.signatures,
+      underscoreMatches: text.match(underscorePattern)?.length || 0
     });
 
-    let whichSignature = 0;
     while ((match = underscorePattern.exec(text)) !== null) {
+      // Safety check: make sure we have a signature for this match
+      if (whichSignature >= block.signatures.length) {
+        console.warn(`No signature found for underscore match at index ${whichSignature}`, {
+          whichSignature,
+          signaturesLength: block.signatures.length,
+          underscorePosition: match.index
+        });
+        break;
+      }
 
-      let signature = signatures[whichSignature];
+      const signature = block.signatures[whichSignature];
       const isCurrentParty = signature.party === currentParty;
       const bgClass = isCurrentParty ? "bg-blue-100 hover:bg-blue-200" : "bg-red-100 hover:bg-red-200";
 
-
       // Add text before the underscores (preserve newlines)
       if (match.index > lastIndex) {
-        signatureIndex = match.index;
-        signature.index = signatureIndex;
         const textBefore = text.slice(lastIndex, match.index);
         parts.push(
-          <span key={`text_${blockIndex}_${signatureIndex}`} className="whitespace-pre-wrap">
+          <span key={`text_${blockIndex}_${lastIndex}`} className="whitespace-pre-wrap">
             {textBefore}
           </span>
         );
       }
       
+      // Capture the current signature index in a local variable to avoid closure issues
+      const currentSignatureIndex = whichSignature;
       
       parts.push(
         <span
-          key={`ph_${blockIndex}_${signatureIndex}`}
+          key={`signature_${blockIndex}_${whichSignature}`}
           className={`relative inline-block ${bgClass} rounded px-1 py-0.5 font-mono transition-colors duration-150 ${
             isCurrentParty ? 'cursor-pointer' : 'cursor-not-allowed'
-            // XXX: That cursor-not-allowed thing is too ugly, make it a better thing in general some modal or something when you click on it.
           }`}
-          data-index={signatureIndex}
+          data-index={whichSignature}
           data-party={signature?.party || "PartyA"}
           onClick={(e) => {
             e.stopPropagation(); // Prevent parent block click
             
-            // Always use the array index of the found placeholder for consistency            
-            server_log("Signature Field Clicked:", {
-              signature,
-              signatureIndex,
-              isCurrentParty,
-              currentParty,
-            });
-            
-            server_log("Opening signature/date modal for index:", signatureIndex);
-            onSignatureClick(signatureIndex);
+            if (isCurrentParty) {
+              console.log("Opening signature modal for signature index:", currentSignatureIndex);
+              onSignatureClick(currentSignatureIndex);
+            }
           }}
         >
           {signature?.img_url ? (
@@ -85,16 +85,14 @@ export default function ContractBlock({
               className="inline-block h-6 max-w-24 object-contain"
             />
           ) : (
-            match[0] /* Render the actual underscores (10 or 20) */
+            match[0] /* Render the actual underscores */
           )}
         </span>
       );
-    }
-    
 
-    lastIndex = match.index + match[0].length;
-    whichSignature++;
-    
+      lastIndex = match.index + match[0].length;
+      whichSignature++;
+    }
 
     // Add remaining text (preserve newlines)
     if (lastIndex < text.length) {

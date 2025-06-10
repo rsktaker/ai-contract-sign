@@ -2,9 +2,10 @@
 import nodemailer from "nodemailer";
 import { connectToDatabase } from '@/lib/mongodb';
 import mongoose from 'mongoose';
+import { generateContractPDF } from './pdf-generator';
 
 // Update existing contract and mark as sent
-async function updateContractForSending(contractId: string, contractJson: any) {
+async function updateContractForSending(contractId: string, contractJson: any, recipientEmail: string) {
   await connectToDatabase();
   const db = mongoose.connection.db;
   
@@ -17,6 +18,7 @@ async function updateContractForSending(contractId: string, contractJson: any) {
     { 
       $set: {
         content: JSON.stringify(contractJson),
+        recipientEmail: recipientEmail,
         status: 'sent',
         updatedAt: new Date()
       }
@@ -35,7 +37,7 @@ async function getContract(contractId: string) {
     }
 
     const contract = await db.collection('contracts').findOne({ _id: new mongoose.Types.ObjectId(contractId) });
-    return contract ? contract.content : null;
+    return contract;
   } catch (error) {
     console.error(`Error reading contract ${contractId}:`, error);
     return null;
@@ -52,10 +54,34 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-export async function sendContractEmail(contractId: string, contractJson: any, recipientEmail: string) {
-  await updateContractForSending(contractId, contractJson);
+export async function sendFinalizedContractEmail(contractId: string, contractJson: any, recipientEmail: string) {
+    const pdfBuffer = await generateContractPDF(contractJson, contractId);
 
-  const signUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/sign/${contractId}`;
+    const mailOptions = {
+        from: process.env.FROM_EMAIL,
+        to: recipientEmail,
+        subject: "Please Review Your Finalized Contract",
+        html: `
+          <p>Hello,</p>
+          <p>Please review the contract below:</p>
+          <p>Thank you.</p>
+        `,
+        attachments: [
+          {
+            filename: `contract-${contractId}.pdf`,
+            content: pdfBuffer,
+            contentType: 'application/pdf'
+          }
+        ]
+      };
+    
+      await transporter.sendMail(mailOptions);
+      return contractId;
+}
+export async function sendContractEmail(contractId: string, contractJson: any, recipientEmail: string) {
+  await updateContractForSending(contractId, contractJson, recipientEmail);
+
+  const signUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/contracts/sign/${contractId}`;
 
   const mailOptions = {
     from: process.env.FROM_EMAIL,

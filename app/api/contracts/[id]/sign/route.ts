@@ -9,9 +9,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { partyEmail, signature, timestamp } = await request.json();
+    const { contractJson, timestamp } = await request.json();
 
-    if (!partyEmail || !signature) {
+    if (!contractJson) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -42,47 +42,26 @@ export async function POST(
       );
     }
 
-    // Find the party index
-    const partyIndex = contract.parties.findIndex(
-      (party: any) => party.email === partyEmail
-    );
-
-    if (partyIndex === -1) {
-      return NextResponse.json(
-        { error: 'Party not found in contract' },
-        { status: 404 }
-      );
-    }
-
-    // Check if party has already signed
-    if (contract.parties[partyIndex].signed) {
-      return NextResponse.json(
-        { error: 'Party has already signed this contract' },
-        { status: 400 }
-      );
-    }
-
-    // Update the party's signed status and add signature data
-    contract.parties[partyIndex].signed = true;
-    contract.parties[partyIndex].signatureData = signature;
-    contract.parties[partyIndex].signedAt = timestamp;
-
-    // Check if all parties have signed
-    const allSigned = contract.parties.every((party: any) => party.signed);
-
     // If all parties have signed, update the contract status
-    if (allSigned) {
-      contract.status = 'completed';
-      contract.completedAt = new Date().toISOString();
-    }
+    
+    contract.status = 'completed';
+    contract.completedAt = new Date().toISOString();
+    
 
     // Save the updated contract
     await contract.save();
 
+    
+    const recipientEmail = contract.recipientEmail;
+    // Use recipientEmail as needed
+    console.log('Recipient email:', recipientEmail);
+
+    
+    
+
     return NextResponse.json({
       success: true,
       message: 'Contract signed successfully',
-      allPartiesSigned: allSigned
     });
 
   } catch (error) {

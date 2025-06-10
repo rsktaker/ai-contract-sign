@@ -2,46 +2,46 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
-import SignaturePad from '@/components/SignaturePad';
+import ContractBlock from '@/components/ContractBlock';
+import SignatureModal from '@/components/SignatureModal';
+import { sendFinalizedContractEmail } from '@/lib/mailer';
 
 interface Contract {
   _id: string;
-  title: string;
   content: string;
-  parties: Array<{
-    name: string;
-    email: string;
-    role: string;
-    signed: boolean;
-  }>;
-  status: string;
+  recipientEmail: string;
+}
+
+interface Signature {
+  party: string;
+  img_url: string;
+  index: number; // index of the signature in the block
+}
+
+interface ContractBlock {
+  text: string;
+  signatures: Signature[];
+}
+
+interface ContractJson {
+  blocks: ContractBlock[];
+  unknowns: string[];
 }
 
 export default function SignContractPage() {
   const params = useParams();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const partyEmail = searchParams.get('party');
   
   const [contract, setContract] = useState<Contract | null>(null);
+  const [contractJson, setContractJson] = useState<ContractJson | null>(null);
   const [loading, setLoading] = useState(true);
-  const [signing, setSigning] = useState(false);
-  const [agreed, setAgreed] = useState(false);
-  const [signature, setSignature] = useState<string | null>(null);
-  const [currentParty, setCurrentParty] = useState<Contract['parties'][0] | null>(null);
+  const [showSignatureFor, setShowSignatureFor] = useState<{ blockIndex: number; signatureIndex: number } | null>(null);
+  const [currentParty, setCurrentParty] = useState("PartyB"); // Assume recipient is PartyB
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchContract();
   }, []);
-
-  useEffect(() => {
-    if (contract && partyEmail) {
-      const party = contract.parties.find(p => p.email === partyEmail);
-      setCurrentParty(party || null);
-    }
-  }, [contract, partyEmail]);
 
   const fetchContract = async () => {
     try {
@@ -49,6 +49,15 @@ export default function SignContractPage() {
       if (response.ok) {
         const data = await response.json();
         setContract(data.contract);
+        
+        // Parse contract content if it's a string
+        let parsedContent;
+        if (typeof data.contract.content === 'string') {
+          parsedContent = JSON.parse(data.contract.content);
+        } else {
+          parsedContent = data.contract.content;
+        }
+        setContractJson(parsedContent);
       } else {
         setError('Failed to load contract');
       }
@@ -60,12 +69,46 @@ export default function SignContractPage() {
     }
   };
 
-  const handleSign = async () => {
-    if (!signature || !currentParty || !agreed) return;
+  // Handler to update a signature field
+  const handleSignatureSave = (blockIndex: number, signatureIndex: number, img_url: string) => {
+    setContractJson((prev) => {
+      if (!prev) return prev;
+      
+      const updatedBlocks = [...prev.blocks];
+      const block = { ...updatedBlocks[blockIndex] };
+      const signatures = [...block.signatures];
+      
+      if (signatures[signatureIndex].party !== currentParty) {
+        console.error(`Signature at index ${signatureIndex} is not for the current party`);
+        return prev;
+      }
 
-    setSigning(true);
-    setError(null);
-    
+      signatures[signatureIndex] = {
+        ...signatures[signatureIndex],
+        img_url: img_url
+      };
+
+      block.signatures = signatures;
+      updatedBlocks[blockIndex] = block;
+
+      return { ...prev, blocks: updatedBlocks };
+    });
+  };
+
+  // Handler to finalize the contract
+  const handleFinalizeContract = async () => {
+    if (!contractJson) return;
+
+    // Check if all signatures for current party are completed
+    const hasBlankSignatures = contractJson.blocks.some((block) =>
+      block.signatures.some((s) => s.party === currentParty && s.img_url === "")
+    );
+
+    if (hasBlankSignatures) {
+      alert("Please sign all your designated signature fields before finalizing.");
+      return;
+    }
+
     try {
       const response = await fetch(`/api/contracts/${params.id}/sign`, {
         method: 'POST',
@@ -73,205 +116,106 @@ export default function SignContractPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          partyEmail: currentParty.email,
-          signature: signature,
+          contractJson: contractJson,
           timestamp: new Date().toISOString(),
         }),
       });
 
       if (response.ok) {
-        // Redirect back to contract view
-        router.push(`/contracts/${params.id}`);
+        alert("Contract signed successfully!");
+        router.push('/dashboard');
       } else {
-        // Get the actual error message from the response
         const errorData = await response.json();
-        console.error('Sign error:', errorData);
         setError(errorData.error || 'Failed to sign contract');
       }
     } catch (error) {
       console.error('Error signing contract:', error);
       setError('An error occurred while signing. Please try again.');
-    } finally {
-      setSigning(false);
     }
+
+    if (contract) {
+      await sendFinalizedContractEmail(params.id as string, contractJson, contract.recipientEmail);
+    }
+
   };
 
   if (loading) return <div className="p-8">Loading...</div>;
   if (error) return <div className="p-8 text-red-600">Error: {error}</div>;
-  if (!contract) return <div className="p-8">Contract not found</div>;
-  if (!currentParty) return <div className="p-8">Invalid signing link</div>;
-  if (currentParty.signed) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--background)' }}>
-        <div className="text-center">
-          <svg className="w-16 h-16 text-green-600 mx-auto mb-4" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-          </svg>
-          <h2 className="text-2xl font-bold mb-2" style={{ color: 'var(--foreground)' }}>
-            Already Signed
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">
-            You have already signed this contract.
-          </p>
-          <Link
-            href={`/contracts/${params.id}`}
-            className="text-blue-600 hover:text-blue-800"
-          >
-            View Contract
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  if (!contract || !contractJson) return <div className="p-8">Contract not found</div>;
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: 'var(--background)' }}>
-      <div className="max-w-4xl mx-auto p-8">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--foreground)' }}>
-            Sign Contract: {contract.title}
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Signing as: <strong>{currentParty.name}</strong> ({currentParty.role})
-          </p>
-        </div>
-
-        {/* Error Display */}
-        {error && (
-          <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-4">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm text-red-800 dark:text-red-200">
-                  {error}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Contract Content */}
-        <div 
-          className="shadow-md rounded-lg p-8 mb-6"
-          style={{ 
-            backgroundColor: 'var(--background)',
-            border: '1px solid rgba(128, 128, 128, 0.2)',
-            color: 'var(--foreground)'
-          }}
-        >
-          <h2 className="text-xl font-semibold mb-4" style={{ color: 'var(--foreground)' }}>
-            Contract Terms
-          </h2>
-          <div 
-            className="prose max-w-none mb-6" 
-            style={{ 
-              color: 'var(--foreground)',
-              maxHeight: '400px',
-              overflowY: 'auto'
-            }}
-          >
-            <div 
-              dangerouslySetInnerHTML={{ __html: contract.content.replace(/\n/g, '<br />') }}
-            />
-          </div>
-
-          {/* Agreement Checkbox */}
-          <div className="border-t pt-4">
-            <label className="flex items-start cursor-pointer">
-              <input
-                type="checkbox"
-                checked={agreed}
-                onChange={(e) => setAgreed(e.target.checked)}
-                className="mt-1 mr-3"
-              />
-              <span className="text-sm" style={{ color: 'var(--foreground)' }}>
-                I have read and agree to the terms and conditions outlined in this contract. 
-                I understand that my electronic signature is legally binding.
-              </span>
-            </label>
-          </div>
-        </div>
-
-        {/* Signature Section */}
-        <div 
-          className="shadow-md rounded-lg p-8"
-          style={{ 
-            backgroundColor: 'var(--background)',
-            border: '1px solid rgba(128, 128, 128, 0.2)',
-            color: 'var(--foreground)'
-          }}
-        >
-          <h2 className="text-xl font-semibold mb-4" style={{ color: 'var(--foreground)' }}>
-            Your Signature
-          </h2>
-          
-          {!signature ? (
-            <SignaturePad onSave={setSignature} />
-          ) : (
-            <div className="space-y-4">
-              <div className="border-2 border-green-500 rounded-lg p-4 bg-green-50 dark:bg-green-900/20">
-                <img src={signature} alt="Your signature" className="max-h-32" />
-              </div>
-              <button
-                onClick={() => setSignature(null)}
-                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
-                style={{ color: 'var(--foreground)' }}
-              >
-                Redo Signature
-              </button>
-            </div>
-          )}
-
-          {/* Sign Button */}
-          <div className="mt-6 flex gap-4">
-            <button
-              onClick={handleSign}
-              disabled={!signature || !agreed || signing}
-              className={`px-6 py-3 rounded-md font-medium transition-colors ${
-                signature && agreed && !signing
-                  ? 'bg-blue-600 text-white hover:bg-blue-700'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              }`}
-            >
-              {signing ? 'Signing...' : 'Sign Contract'}
-            </button>
-            <Link
-              href={`/contracts/${params.id}`}
-              className="px-6 py-3 bg-gray-200 dark:bg-gray-700 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-              style={{ color: 'var(--foreground)' }}
-            >
-              Cancel
-            </Link>
-          </div>
-
-          {(!signature || !agreed) && (
-            <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">
-              {!agreed && "Please agree to the terms before signing. "}
-              {!signature && "Please provide your signature above."}
+    <div className="flex flex-col h-screen bg-gray-50">
+      <div className="flex justify-center px-8 py-6">
+        {/* Contract Display - 7/12 width, centered */}
+        <div className="w-7/12">
+          {/* Header */}
+          <div className="mb-6 bg-white rounded-lg p-6 shadow-md">
+            <h1 className="text-3xl font-bold mb-2">
+              Sign Contract
+            </h1>
+            <p className="text-gray-600">
+              Please review the contract and sign in the designated areas.
             </p>
-          )}
-        </div>
-
-        {/* Legal Notice */}
-        <div className="mt-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-4">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3 flex-1">
-              <p className="text-sm text-blue-800 dark:text-blue-200">
-                By signing this document electronically, you agree that your electronic signature 
-                is the legal equivalent of your manual signature on this contract.
-              </p>
-            </div>
           </div>
+
+          {/* Error Display */}
+          {error && (
+            <div className="mb-6 bg-red-50 border border-red-200 rounded-md p-4">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-red-800">{error}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Contract Blocks */}
+          <div className="space-y-2">
+            {contractJson.blocks.map((block, i) => (
+              <ContractBlock
+                key={i}
+                block={block}
+                blockIndex={i}
+                currentParty={currentParty}
+                onSignatureClick={(signatureIndex: number) => {
+                  const signature = block.signatures[signatureIndex];
+                  if (signature.party !== currentParty) return;
+                  setShowSignatureFor({ blockIndex: i, signatureIndex });
+                }}
+                onRegenerate={() => {}} // Disabled for signing
+              />
+            ))}
+          </div>
+
+          {/* Finalize Contract Button */}
+          <div className="mt-8 bg-white rounded-lg p-6 shadow-md">
+            <button
+              onClick={handleFinalizeContract}
+              className="w-full py-4 bg-green-600 text-white rounded-md hover:bg-green-700 transition text-lg font-semibold"
+            >
+              Finalize Contract
+            </button>
+            <p className="text-sm text-gray-600 mt-2 text-center">
+              By clicking "Finalize Contract", you confirm that you have read and agree to all terms.
+            </p>
+          </div>
+
+          {/* Signature Modal */}
+          {showSignatureFor && (
+            <SignatureModal
+              onClose={() => setShowSignatureFor(null)}
+              onSave={(img_url: string) => {
+                const { blockIndex, signatureIndex } = showSignatureFor;
+                handleSignatureSave(blockIndex, signatureIndex, img_url);
+                setShowSignatureFor(null);
+              }}
+            />
+          )}
         </div>
       </div>
     </div>

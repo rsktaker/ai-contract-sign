@@ -185,7 +185,7 @@ export default function NewContractPage() {
                   Generating Contract...
                 </span>
               ) : (
-                "✨ Generate Contract with AI"
+                "Generate"
               )}
             </button>
           </div>

@@ -115,8 +115,28 @@ You are a contract‐writing assistant. When given a user prompt, produce a JSON
 CRITICAL REQUIREMENTS:
 - Generate 10 COMPREHENSIVE, all-embracing, all-encompassing, all-inclusive, broad blocks to create a complete, professional contract
 - Each block should represent a major contract section (e.g., parties/scope, terms, payment, termination, signatures)
+
+SIGNATURE FIELD REQUIREMENTS - FOLLOW EXACTLY:
+- ONLY use underscores for signature fields - NEVER for dates, names, or other blanks
 - Signature fields must be exactly 20 underscores: ____________________
-- Each signature field must have a party field that is either "PartyA" or "PartyB"
+- For dates, names, amounts, or other fill-in fields, use brackets like [DATE], [AMOUNT], [PARTY NAME] or write descriptive text
+- For EVERY sequence of 20 underscores in the text, you MUST create exactly ONE corresponding signature object
+- The number of signature objects in each block MUST equal the number of 20-underscore sequences in that block's text
+- Each signature object must have: party ("PartyA" or "PartyB"), img_url (empty string ""), index (0, 1, 2... in order of appearance)
+- The "index" field represents the order the signature appears in the text (first underscore sequence = index 0, second = index 1, etc.)
+
+UNDERSCORE USAGE RULES:
+- 20 underscores (____________________) = SIGNATURE FIELD ONLY
+- For date lines: use "Date: [DATE]" or "Date: ____________" (not 20 underscores)
+- For name lines: use "Name: [PARTY NAME]" or write out the actual name
+- For amounts: use "[AMOUNT]" or write specific amounts
+- NEVER use 20 underscores for anything except signature collection
+
+VALIDATION CHECK:
+- Count the 20-underscore sequences in each block's text
+- Ensure the signatures array has exactly that many objects
+- NO MISMATCHES ALLOWED
+
 - You can use newlines (\\n) within contract text for better formatting and readability
 - Make sure the contract is comprehensive and professional
 - Make sure the list of unknowns is as short as possible, consisting of ONLY the most essential, critical, mandatory pieces of information that the contract cannot be created without.
@@ -161,25 +181,46 @@ export async function regenerateBlockJson(
   userInstructions: string
 ): Promise<ContractJson> {
   const systemPrompt = `
-You are a contract‐writing assistant. Here is the existing contract (blocks 0 to ${
-    blockIndex - 1
-  }, blocks ${blockIndex + 1} to end):
-${JSON.stringify(
-  fullContractJson.blocks.filter((_: ContractBlock, idx: number) => idx !== blockIndex),
-  null,
-  2
-)}
+You are a contract‐writing assistant. You must return the ENTIRE contract in the EXACT JSON schema format with "blocks" and "unknowns" properties.
 
-Here is block ${blockIndex} EXACTLY as in JSON (including text and, if any, signature placeholders):
-${JSON.stringify(fullContractJson.blocks[blockIndex], null, 2)}
+Here is the current contract:
+${JSON.stringify(fullContractJson, null, 2)}
 
-Please regenerate ONLY block ${blockIndex} according to the user's instructions below and return the entire contract in the same JSON schema. Do NOT modify any other blocks or return extra fields, ONLY modify block ${blockIndex}.
+Please regenerate ONLY block ${blockIndex} according to the user's instructions below and return the entire contract in the same JSON schema format:
 
-Also, update the list of unknowns. If you can cross out an unknown, given information you were provided in the user instructions, MAKE SURE to do so.
+{
+  "blocks": [
+    { "text": "...", "signatures": [...] },
+    ...
+  ],
+  "unknowns": [...]
+}
 
 CRITICAL REQUIREMENTS:
+- Return the COMPLETE contract with ALL blocks (only modify block ${blockIndex})
+
+SIGNATURE FIELD REQUIREMENTS - FOLLOW EXACTLY:
+- ONLY use underscores for signature fields - NEVER for dates, names, or other blanks
 - Signature fields must be exactly 20 underscores: ____________________
-- Each signature field must have a party field that is either "PartyA" or "PartyB"
+- For dates, names, amounts, or other fill-in fields, use brackets like [DATE], [AMOUNT], [PARTY NAME] or write descriptive text
+- For EVERY sequence of 20 underscores in the text, you MUST create exactly ONE corresponding signature object
+- The number of signature objects in block ${blockIndex} MUST equal the number of 20-underscore sequences in that block's text
+- Each signature object must have: party ("PartyA" or "PartyB"), img_url (preserve existing or empty string ""), index (0, 1, 2... in order of appearance)
+- The "index" field represents the order the signature appears in the text (first underscore sequence = index 0, second = index 1, etc.)
+- PRESERVE EXISTING img_url VALUES - do not change img_url fields that already contain signature data
+
+UNDERSCORE USAGE RULES:
+- 20 underscores (____________________) = SIGNATURE FIELD ONLY
+- For date lines: use "Date: [DATE]" or "Date: ____________" (not 20 underscores)
+- For name lines: use "Name: [PARTY NAME]" or write out the actual name
+- For amounts: use "[AMOUNT]" or write specific amounts
+- NEVER use 20 underscores for anything except signature collection
+
+VALIDATION CHECK:
+- Count the 20-underscore sequences in block ${blockIndex}'s text
+- Ensure the signatures array has exactly that many objects
+- NO MISMATCHES ALLOWED
+
 - You can use newlines (\\n) within contract text for better formatting and readability
 - Update the list of unknowns. If you can cross out an unknown, given information you were provided in the user instructions, do so.
 
@@ -188,10 +229,8 @@ IMPORTANT - USE SPECIFIC DETAILS FROM USER PROMPT:
 - If the user mentions specific context (like "business idea", "consulting work", "rental agreement"), incorporate that specific language
 - If the user provides company names, use them
 - If the user specifies relationships (like "friend", "colleague"), reference that context appropriately
-- Do NOT edit any img_url fields; those are edited client-side.
 
-Return ONLY the JSON (no extra commentary or markdown formatting).
-
+Return ONLY the JSON with "blocks" and "unknowns" properties (no extra commentary or markdown formatting).
 
 User instructions: "${userInstructions}"
 `;
@@ -202,8 +241,24 @@ User instructions: "${userInstructions}"
   });
   
   const text = completion.choices[0].message.content;
+  console.log('Raw OpenAI response for block regeneration:', text);
+  
   const cleanedText = cleanJsonResponse(text || '');
-  return JSON.parse(cleanedText);
+  console.log('Cleaned text for parsing:', cleanedText);
+  
+  try {
+    const result = JSON.parse(cleanedText);
+    console.log('Parsed result:', {
+      hasBlocks: !!result?.blocks,
+      blocksCount: result?.blocks?.length,
+      hasUnknowns: !!result?.unknowns
+    });
+    return result;
+  } catch (parseError) {
+    console.error('Failed to parse JSON response:', parseError);
+    console.error('Text that failed to parse:', cleanedText);
+    throw new Error(`Failed to parse AI response: ${parseError instanceof Error ? parseError.message : 'Unknown parse error'}`);
+  }
 }
 
 export async function regenerateContract(
@@ -219,12 +274,31 @@ Please regenerate the ENTIRE contract according to the user's instructions below
 CRITICAL REQUIREMENTS:
 - Generate comprehensive blocks to create a complete, professional contract
 - Each block should represent a major contract section (e.g., parties/scope, terms, payment, termination, signatures)
+
+SIGNATURE FIELD REQUIREMENTS - FOLLOW EXACTLY:
+- ONLY use underscores for signature fields - NEVER for dates, names, or other blanks
 - Signature fields must be exactly 20 underscores: ____________________
-- Each signature field must have a party field that is either "PartyA" or "PartyB"
+- For dates, names, amounts, or other fill-in fields, use brackets like [DATE], [AMOUNT], [PARTY NAME] or write descriptive text
+- For EVERY sequence of 20 underscores in the text, you MUST create exactly ONE corresponding signature object
+- The number of signature objects in each block MUST equal the number of 20-underscore sequences in that block's text
+- Each signature object must have: party ("PartyA" or "PartyB"), img_url (preserve existing or empty string ""), index (0, 1, 2... in order of appearance)
+- The "index" field represents the order the signature appears in the text (first underscore sequence = index 0, second = index 1, etc.)
+- PRESERVE EXISTING img_url VALUES - do not change img_url fields that already contain signature data
+
+UNDERSCORE USAGE RULES:
+- 20 underscores (____________________) = SIGNATURE FIELD ONLY
+- For date lines: use "Date: [DATE]" or "Date: ____________" (not 20 underscores)
+- For name lines: use "Name: [PARTY NAME]" or write out the actual name
+- For amounts: use "[AMOUNT]" or write specific amounts
+- NEVER use 20 underscores for anything except signature collection
+
+VALIDATION CHECK:
+- Count the 20-underscore sequences in each block's text
+- Ensure the signatures array has exactly that many objects
+- NO MISMATCHES ALLOWED
+
 - You can use newlines (\\n) within contract text for better formatting and readability
 - Update the list of unknowns based on the new contract requirements
-- Do NOT modify any existing img_url fields that contain actual signature URLs; those are entered client-side
-- Preserve any existing signature images in img_url fields
 
 IMPORTANT - USE SPECIFIC DETAILS FROM USER PROMPT:
 - If the user mentions specific names, use those names directly in the contract text

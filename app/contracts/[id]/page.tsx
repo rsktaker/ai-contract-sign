@@ -11,7 +11,8 @@ import ContractSummary from "@/components/ContractSummary";
 
 interface Contract {
   _id: string;
-  content: ContractJson;
+  content: string;
+  recipientEmail?: string;
 }
 
 interface Signature {
@@ -89,7 +90,15 @@ export default function ContractPage() {
         const data = await response.json();
 
         setContract(data.contract);
-        setContractJson(data.contract.content);
+        
+        // Parse contract content since it's stored as a string
+        let parsedContent;
+        if (typeof data.contract.content === 'string') {
+          parsedContent = JSON.parse(data.contract.content);
+        } else {
+          parsedContent = data.contract.content;
+        }
+        setContractJson(parsedContent);
       }
     } catch (error) {
       console.error('Error fetching contract:', error);
@@ -114,10 +123,27 @@ export default function ContractPage() {
           userPrompt: userInstructions,
         }),
       });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        console.error('API Error:', errorData);
+        alert(`Error regenerating block: ${errorData.error || 'Unknown error'}`);
+        return;
+      }
+      
       const data = await res.json();
+      
+      // Validate the response structure
+      if (!data || !data.blocks || !Array.isArray(data.blocks)) {
+        console.error('Invalid response structure:', data);
+        alert('Invalid response from server. Please try again.');
+        return;
+      }
+      
       setContractJson(data);
     } catch (err) {
-      console.error(err);
+      console.error('Error regenerating block:', err);
+      alert('Failed to regenerate block. Please try again.');
     }
   };
 
@@ -125,12 +151,21 @@ export default function ContractPage() {
   // First opens SignatureModal to capture a signature
   // Takes the resulting image and saves it as a string in the img_url field of the signature
   const handleSignatureSave = (blockIndex: number, signatureIndex: number, img_url: string) => {
+    console.log('handleSignatureSave called:', { blockIndex, signatureIndex, hasImgUrl: !!img_url });
+    
     setContractJson((prev) => {
       if (!prev) return prev;
       
       const updatedBlocks = [...prev.blocks];
       const block = { ...updatedBlocks[blockIndex] };
       const signatures = [...block.signatures];
+      
+      console.log('Before update:', {
+        signatureExists: !!signatures[signatureIndex],
+        currentParty,
+        signatureParty: signatures[signatureIndex]?.party,
+        oldImgUrl: signatures[signatureIndex]?.img_url
+      });
       
       if (signatures[signatureIndex].party !== currentParty) {
         console.error(`Signature at index ${signatureIndex} is not for the current party`);
@@ -144,6 +179,11 @@ export default function ContractPage() {
 
       block.signatures = signatures;
       updatedBlocks[blockIndex] = block;
+
+      console.log('After update:', {
+        newImgUrl: signatures[signatureIndex].img_url,
+        signatureLength: signatures[signatureIndex].img_url.length
+      });
 
       return { ...prev, blocks: updatedBlocks };
     });
@@ -186,7 +226,7 @@ export default function ContractPage() {
       return;
     }
     try {
-      const res = await fetch("/api/contracts/[id]/send", {
+      const res = await fetch(`/api/contracts/${params.id}/send`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ contractJson, recipientEmail }),
@@ -205,7 +245,7 @@ export default function ContractPage() {
 
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
+    <div className="flex flex-col h-[calc(100vh-4rem)] bg-gray-50">
       {isLoading || !contractJson ? (
         <div className="flex flex-1 px-8 py-6 space-x-6 h-0">
           {/* Left: Contract Blocks Skeleton */}
@@ -231,28 +271,42 @@ export default function ContractPage() {
         </div>
       ) : (
         <div className="flex flex-1 px-8 py-6 space-x-6 h-0">
-          {/* Left: Contract Blocks */}
-          <div className="w-7/12 flex-1 overflow-y-auto pb-4 pr-2">
-            {contractJson.blocks.map((block, i) => (
-              <ContractBlock
-                key={i}
-                block={block}
-                blockIndex={i}
-                currentParty={currentParty}
-                onSignatureClick={(signatureIndex: number) => {
+          {/* Left: Contract Blocks + Regeneration */}
+          <div className="w-7/12 flex flex-col h-full">
+            {/* Contract Blocks - Scrollable */}
+            <div className="flex-1 overflow-y-auto pb-4 pr-2">
+              {contractJson?.blocks?.map((block, i) => (
+                <ContractBlock
+                  key={i}
+                  block={block}
+                  blockIndex={i}
+                  currentParty={currentParty}
+                  onSignatureClick={(signatureIndex: number) => {
+                  console.log('Signature click received:', { blockIndex: i, signatureIndex, totalSignatures: block.signatures.length });
+                  
                   const signature = block.signatures[signatureIndex];
-                  if (signature.party !== currentParty) return;
-                    setShowSignatureFor({ blockIndex: i, signatureIndex });
+                  if (!signature) {
+                    console.error('No signature found at index:', signatureIndex, 'Available signatures:', block.signatures.length);
+                    return;
+                  }
+                  
+                  if (signature.party !== currentParty) {
+                    console.log('Wrong party - signature belongs to:', signature.party, 'but current party is:', currentParty);
+                    return;
+                  }
+                  
+                  setShowSignatureFor({ blockIndex: i, signatureIndex });
                 }}
-                
-                onRegenerate={(userInstructions: string) =>
-                  handleRegenerateBlock(i, userInstructions)
-                }
-              />
-            ))}
+                  
+                  onRegenerate={(userInstructions: string) =>
+                    handleRegenerateBlock(i, userInstructions)
+                  }
+                />
+              ))}
+            </div>
 
-            {/* Contract Regeneration Input */}
-            <div className="m-6 bg-white rounded-lg p-4 shadow-md">
+            {/* Contract Regeneration Input - Fixed at Bottom */}
+            <div className="mt-4 bg-white rounded-lg p-4 shadow-md">
               <div className="flex items-center space-x-3">
                 <input
                   type="text"
@@ -283,6 +337,12 @@ export default function ContractPage() {
                 onClose={() => setShowSignatureFor(null)}
                 onSave={(img_url: string) => {
                   const { blockIndex, signatureIndex } = showSignatureFor;
+                  console.log('Received signature data:', {
+                    blockIndex,
+                    signatureIndex,
+                    dataUrlLength: img_url.length,
+                    dataUrlPreview: img_url.substring(0, 50) + '...'
+                  });
                   handleSignatureSave(blockIndex, signatureIndex, img_url);
                   setShowSignatureFor(null);
                 }}
@@ -293,11 +353,11 @@ export default function ContractPage() {
           {/* Right: PREVIOUSLY A SUMMARY and now a list of unknowns + Send Panel */}
           <div className="w-5/12 h-full flex flex-col">
             <div className="flex-1 bg-white rounded-lg p-6 shadow-md overflow-y-auto">
-              <h2 className="text-lg font-semibold mb-4">Missing Information</h2>
+              <h2 className="text-lg font-semibold mb-4">Suggested Information to Add</h2>
               <ul className="list-disc pl-4 space-y-2">
-                {contractJson.unknowns.map((unknown, i) => (
+                {contractJson?.unknowns?.map((unknown, i) => (
                   <li key={i} className="text-gray-700">{unknown}</li>
-                ))}
+                )) || <li className="text-gray-500">No missing information</li>}
               </ul>
             </div>
             <div className="mt-4 bg-white rounded-lg p-6 shadow-md">

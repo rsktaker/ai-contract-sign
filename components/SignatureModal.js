@@ -1,17 +1,50 @@
 // components/SignatureModal.js
 "use client";
 
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import { Dialog, DialogPanel, DialogBackdrop, DialogTitle } from "@headlessui/react";
 import SignatureCanvas from "react-signature-canvas";
 
 export default function SignatureModal({ onClose, onSave }) {
   const sigCanvasRef = useRef(null);
 
+  // Set willReadFrequently on the canvas element to avoid performance warnings
+  useEffect(() => {
+    if (sigCanvasRef.current) {
+      const canvas = sigCanvasRef.current.getCanvas();
+      if (canvas) {
+        const context = canvas.getContext('2d', { willReadFrequently: true });
+      }
+    }
+  }, []);
+
   const handleSave = () => {
     if (sigCanvasRef.current) {
-      const dataUrl = sigCanvasRef.current.getTrimmedCanvas().toDataURL();
-      onSave(dataUrl);
+      // Check if signature is empty first
+      if (sigCanvasRef.current.isEmpty()) {
+        alert('Please provide a signature before saving.');
+        return;
+      }
+      
+      try {
+        // Try getTrimmedCanvas first (if available)
+        if (typeof sigCanvasRef.current.getTrimmedCanvas === 'function') {
+          const dataUrl = sigCanvasRef.current.getTrimmedCanvas().toDataURL();
+          console.log('Signature saved with getTrimmedCanvas:', dataUrl.substring(0, 50) + '...');
+          onSave(dataUrl);
+        } else {
+          // Fallback to regular canvas
+          const dataUrl = sigCanvasRef.current.getCanvas().toDataURL();
+          console.log('Signature saved with getCanvas:', dataUrl.substring(0, 50) + '...');
+          onSave(dataUrl);
+        }
+      } catch (error) {
+        console.error('Error saving signature:', error);
+        // Final fallback - use toDataURL directly
+        const dataUrl = sigCanvasRef.current.toDataURL();
+        console.log('Signature saved with fallback toDataURL:', dataUrl.substring(0, 50) + '...');
+        onSave(dataUrl);
+      }
     }
   };
 
@@ -39,7 +72,7 @@ export default function SignatureModal({ onClose, onSave }) {
               canvasProps={{
                 width: 400,
                 height: 200,
-                className: "rounded",
+                className: "rounded"
               }}
               ref={sigCanvasRef}
             />
