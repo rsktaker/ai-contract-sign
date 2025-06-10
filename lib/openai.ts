@@ -7,6 +7,8 @@ const openai = new OpenAI({
 // TypeScript interfaces for contract structure
 interface Signature {
   party: string;
+  img_url: string;
+  index: number; // index of the signature in the block
 }
 
 interface ContractBlock {
@@ -98,7 +100,9 @@ You are a contract‐writing assistant. When given a user prompt, produce a JSON
       "text": string, // a paragraph/clause of the contract. For the signature block, missing signature fields should be replaced by 20 underscores. You can include newlines (\\n) for better formatting.
       "signatures": [
         {
-          "party": string         // Which of the parties is signing this signature field. Two possible values: "PartyA" or "PartyB". PartyA is the party that generated the contract and is requesting the signature. PartyB is the party that is signing the contract.
+          "party": string,         // Which of the parties is signing this signature field. Two possible values: "PartyA" or "PartyB". PartyA is the party that generated the contract and is requesting the signature. PartyB is the party that is signing the contract.
+          "img_url": string,       // The URL of the party's signature image. This will be used to display the signature image in the UI and will be entered client-side. Do NOT include any text in this field as it will be updated client-side (should be empty for now).
+          "index": number          // The index of the signature in the block.
         },
         ...
       ]
@@ -112,6 +116,7 @@ CRITICAL REQUIREMENTS:
 - Generate 10 COMPREHENSIVE, all-embracing, all-encompassing, all-inclusive, broad blocks to create a complete, professional contract
 - Each block should represent a major contract section (e.g., parties/scope, terms, payment, termination, signatures)
 - Signature fields must be exactly 20 underscores: ____________________
+- Each signature field must have a party field that is either "PartyA" or "PartyB"
 - You can use newlines (\\n) within contract text for better formatting and readability
 - Make sure the contract is comprehensive and professional
 - Make sure the list of unknowns is as short as possible, consisting of ONLY the most essential, critical, mandatory pieces of information that the contract cannot be created without.
@@ -154,7 +159,7 @@ export async function regenerateBlockJson(
   fullContractJson: ContractJson,
   blockIndex: number,
   userInstructions: string
-): Promise<ContractBlock> {
+): Promise<ContractJson> {
   const systemPrompt = `
 You are a contract‐writing assistant. Here is the existing contract (blocks 0 to ${
     blockIndex - 1
@@ -165,10 +170,67 @@ ${JSON.stringify(
   2
 )}
 
-Here is block ${blockIndex} EXACTLY as in JSON (including text and placeholders):
+Here is block ${blockIndex} EXACTLY as in JSON (including text and, if any, signature placeholders):
 ${JSON.stringify(fullContractJson.blocks[blockIndex], null, 2)}
 
-Please regenerate ONLY block ${blockIndex} according to the user's instructions below. Return exactly the same JSON schema for this single block (with updated "text" and "placeholders"), and do NOT modify any other blocks or return extra fields. Only output the JSON object for block ${blockIndex}.
+Please regenerate ONLY block ${blockIndex} according to the user's instructions below and return the entire contract in the same JSON schema. Do NOT modify any other blocks or return extra fields, ONLY modify block ${blockIndex}.
+
+Also, update the list of unknowns. If you can cross out an unknown, given information you were provided in the user instructions, MAKE SURE to do so.
+
+CRITICAL REQUIREMENTS:
+- Signature fields must be exactly 20 underscores: ____________________
+- Each signature field must have a party field that is either "PartyA" or "PartyB"
+- You can use newlines (\\n) within contract text for better formatting and readability
+- Update the list of unknowns. If you can cross out an unknown, given information you were provided in the user instructions, do so.
+
+IMPORTANT - USE SPECIFIC DETAILS FROM USER PROMPT:
+- If the user mentions specific names (like "Tayler", "John", "Sarah"), use those names directly in the contract text instead of generic "PartyA" or "PartyB"
+- If the user mentions specific context (like "business idea", "consulting work", "rental agreement"), incorporate that specific language
+- If the user provides company names, use them
+- If the user specifies relationships (like "friend", "colleague"), reference that context appropriately
+- Do NOT edit any img_url fields; those are edited client-side.
+
+Return ONLY the JSON (no extra commentary or markdown formatting).
+
+
+User instructions: "${userInstructions}"
+`;
+
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o",
+    messages: [{ role: "system", content: systemPrompt.trim() }],
+  });
+  
+  const text = completion.choices[0].message.content;
+  const cleanedText = cleanJsonResponse(text || '');
+  return JSON.parse(cleanedText);
+}
+
+export async function regenerateContract(
+  contractJson: ContractJson,
+  userInstructions: string
+): Promise<ContractJson> {
+  const systemPrompt = `
+You are a contract‐writing assistant. Here is the existing contract:
+${JSON.stringify(contractJson, null, 2)}
+
+Please regenerate the ENTIRE contract according to the user's instructions below and return the complete contract in the same JSON schema format.
+
+CRITICAL REQUIREMENTS:
+- Generate comprehensive blocks to create a complete, professional contract
+- Each block should represent a major contract section (e.g., parties/scope, terms, payment, termination, signatures)
+- Signature fields must be exactly 20 underscores: ____________________
+- Each signature field must have a party field that is either "PartyA" or "PartyB"
+- You can use newlines (\\n) within contract text for better formatting and readability
+- Update the list of unknowns based on the new contract requirements
+- Do NOT modify any existing img_url fields that contain actual signature URLs; those are entered client-side
+- Preserve any existing signature images in img_url fields
+
+IMPORTANT - USE SPECIFIC DETAILS FROM USER PROMPT:
+- If the user mentions specific names, use those names directly in the contract text
+- If the user mentions specific context, incorporate that specific language
+- If the user provides company names, use them
+- If the user specifies relationships, reference that context appropriately
 
 Return ONLY the JSON (no extra commentary or markdown formatting).
 

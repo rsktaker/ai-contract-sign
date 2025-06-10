@@ -28,10 +28,14 @@ export async function POST(request: NextRequest) {
     // Create a valid ObjectId for testing
     const testUserId = new mongoose.Types.ObjectId();
     
-    // Save to database 
+    // Save to database with all required fields
     const contract = await Contract.create({
       userId: testUserId,
-      content: contractJson,
+      title: `Contract - ${new Date().toLocaleDateString()}`,
+      type: 'custom',
+      requirements: prompt,
+      content: JSON.stringify(contractJson),
+      status: 'draft'
     });
     
     return NextResponse.json({ contract }, { status: 201 });

@@ -5,6 +5,8 @@ import { useSearchParams, useRouter } from "next/navigation";
 import ContractBlock from "@/components/ContractBlock";
 import SignatureModal from "@/components/SignatureModal";
 import ContractSummary from "@/components/ContractSummary";
+import { server_log } from '@/app/actions/log';
+
 
 import Link from "next/link";
 
@@ -48,6 +50,7 @@ export default function NewContractPage() {
 
       if (response.ok) {
         const { contract } = await response.json();
+        server_log(contract);
         router.push(`/contracts/${contract._id}`);
       } else {
         const error = await response.json();

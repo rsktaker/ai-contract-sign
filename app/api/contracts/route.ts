@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
     const newContract = {
       title: body.title,
       content: body.content,
-      parties: body.parties.map(party => ({
+      parties: body.parties.map((party: any) => ({
         name: party.name,
         email: party.email,
         role: party.role,

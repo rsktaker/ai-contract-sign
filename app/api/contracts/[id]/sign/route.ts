@@ -1,25 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import mongoose from 'mongoose';
+import Contract from '@/models/Contract';
 
-// Define the Contract schema if you don't have it already
-const contractSchema = new mongoose.Schema({
-  title: String,
-  content: String,
-  parties: [{
-    name: String,
-    email: String,
-    role: String,
-    signed: { type: Boolean, default: false },
-    signatureData: String,
-    signedAt: String,
-  }],
-  status: { type: String, default: 'draft' },
-  completedAt: String,
-}, { timestamps: true });
-
-// Create or get the model
-const Contract = mongoose.models.Contract || mongoose.model('Contract', contractSchema);
 
 export async function POST(
   request: NextRequest,

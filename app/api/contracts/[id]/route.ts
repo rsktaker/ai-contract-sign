@@ -81,6 +81,13 @@ export async function PUT(
     await connectToDatabase();
     const db = mongoose.connection.db;
 
+    if (!db) {
+      return NextResponse.json(
+        { error: 'Database connection failed' },
+        { status: 500 }
+      );
+    }
+
     // First, get the current contract to check if it can be edited
     const currentContract = await db.collection('contracts').findOne({
       _id: new mongoose.Types.ObjectId(id)
@@ -186,6 +193,13 @@ export async function DELETE(
     // Connect to database
     await connectToDatabase();
     const db = mongoose.connection.db;
+
+    if (!db) {
+      return NextResponse.json(
+        { error: 'Database connection failed' },
+        { status: 500 }
+      );
+    }
 
     // Delete the contract
     const result = await db.collection('contracts').deleteOne({
