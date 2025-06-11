@@ -1,12 +1,12 @@
 import mongoose from 'mongoose';
 
 const ContractSchema = new mongoose.Schema({
-  userId: {
+  
+  title: {userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
-  title: {
     type: String,
     required: true
   },

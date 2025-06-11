@@ -197,6 +197,11 @@ export default function HomePage() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Enter your email"
               className="flex-1 px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleNewsletterSubmit(e);
+                }
+              }}
               required
             />
             <button

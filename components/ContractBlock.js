@@ -82,7 +82,7 @@ export default function ContractBlock({
             <img 
               src={signature.img_url} 
               alt="Signature" 
-              className="inline-block h-6 max-w-24 object-contain"
+              className="inline-block h-8 max-w-48 object-contain"
             />
           ) : (
             match[0] /* Render the actual underscores */
@@ -153,7 +153,7 @@ Same with the unknown list, I need that to be updated as well.*/}
           <DialogBackdrop className="fixed inset-0 bg-black opacity-30" />
           <DialogPanel className="relative bg-white rounded-lg max-w-lg w-full p-6">
             <DialogTitle className="text-lg font-semibold mb-2">
-              Regenerate Block #{blockIndex + 1}
+              Regenerate Block
             </DialogTitle>
             <textarea
               rows={4}
@@ -161,6 +161,12 @@ Same with the unknown list, I need that to be updated as well.*/}
               onChange={(e) => setRegenPrompt(e.target.value)}
               placeholder="Tell me how to update this block..."
               className="w-full p-3 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-300 mb-4"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                  e.preventDefault();
+                  handleRegenerateSubmit();
+                }
+              }}
             />
             <button
               onClick={handleRegenerateSubmit}

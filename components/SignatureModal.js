@@ -27,22 +27,53 @@ export default function SignatureModal({ onClose, onSave }) {
       }
       
       try {
-        // Try getTrimmedCanvas first (if available)
+        // Get the signature canvas
+        let canvas;
         if (typeof sigCanvasRef.current.getTrimmedCanvas === 'function') {
-          const dataUrl = sigCanvasRef.current.getTrimmedCanvas().toDataURL();
-          console.log('Signature saved with getTrimmedCanvas:', dataUrl.substring(0, 50) + '...');
-          onSave(dataUrl);
+          canvas = sigCanvasRef.current.getTrimmedCanvas();
         } else {
-          // Fallback to regular canvas
-          const dataUrl = sigCanvasRef.current.getCanvas().toDataURL();
-          console.log('Signature saved with getCanvas:', dataUrl.substring(0, 50) + '...');
-          onSave(dataUrl);
+          canvas = sigCanvasRef.current.getCanvas();
         }
+
+        // Create a new canvas to add the date
+        const newCanvas = document.createElement('canvas');
+        const ctx = newCanvas.getContext('2d');
+        
+        // Get current date
+        const currentDate = new Date().toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'numeric', 
+          day: 'numeric' 
+        });
+        
+        // Set canvas size to accommodate both signature and date
+        const padding = 15;
+        const dateWidth = 120; // Increased for better spacing
+        newCanvas.width = canvas.width + dateWidth + padding;
+        newCanvas.height = Math.max(canvas.height, 50); // Ensure enough height for date
+        
+        // Keep background transparent - don't fill with white
+        
+        // Draw the signature
+        ctx.drawImage(canvas, 0, 0);
+        
+        // Add the date to the right of the signature
+        ctx.fillStyle = 'black';
+        ctx.font = 'bold 16px Arial';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        const dateX = canvas.width + padding;
+        const dateY = newCanvas.height / 2;
+        ctx.fillText(currentDate, dateX, dateY);
+        
+        // Convert to data URL with PNG format to preserve transparency
+        const dataUrl = newCanvas.toDataURL('image/png');
+        onSave(dataUrl);
+        
       } catch (error) {
-        console.error('Error saving signature:', error);
-        // Final fallback - use toDataURL directly
-        const dataUrl = sigCanvasRef.current.toDataURL();
-        console.log('Signature saved with fallback toDataURL:', dataUrl.substring(0, 50) + '...');
+        console.error('Error saving signature with date:', error);
+        // Fallback - save without date
+        const dataUrl = sigCanvasRef.current.toDataURL('image/png');
         onSave(dataUrl);
       }
     }

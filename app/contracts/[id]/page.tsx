@@ -1,4 +1,9 @@
 // app/contract/page.js
+
+
+
+// Have a list of contracts to choose from, depending on the field you're working with
+
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -67,6 +72,17 @@ const SkeletonSendPanel = () => (
   </div>
 );
 
+// Loading spinner component
+const LoadingSpinner = ({ size = "w-5 h-5" }: { size?: string }) => {
+  console.log('🌀 LoadingSpinner rendered with size:', size);
+  return (
+    <svg className={`${size} animate-spin text-white`} fill="none" viewBox="0 0 24 24">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    </svg>
+  );
+};
+
 
 export default function ContractPage() {
   const params = useParams();
@@ -77,6 +93,8 @@ export default function ContractPage() {
   const [showSignatureFor, setShowSignatureFor] = useState<{ blockIndex: number; signatureIndex: number } | null>(null);
   const [currentParty, setCurrentParty] = useState("PartyA"); // Assume user is PartyA
   const [contractRegenPrompt, setContractRegenPrompt] = useState("");
+  const [isRegeneratingContract, setIsRegeneratingContract] = useState(false);
+  const [isSendingContract, setIsSendingContract] = useState(false);
   const hasFetchedRef = useRef(false);
 
   useEffect(() => {
@@ -191,7 +209,10 @@ export default function ContractPage() {
 
   // Handler to regenerate entire contract
   const handleContractRegeneration = async () => {
-    if (!contractJson || !contractRegenPrompt.trim()) return;
+    if (!contractJson || !contractRegenPrompt.trim() || isRegeneratingContract) return;
+    
+    console.log('🔄 Starting contract regeneration...');
+    setIsRegeneratingContract(true);
     
     try {
       const res = await fetch("/api/regenerateContract", {
@@ -207,8 +228,12 @@ export default function ContractPage() {
       const data = await res.json();
       setContractJson(data);
       setContractRegenPrompt("");
+      console.log('✅ Contract regeneration completed');
     } catch (err) {
-      console.error(err);
+      console.error('❌ Contract regeneration failed:', err);
+    } finally {
+      setIsRegeneratingContract(false);
+      console.log('🏁 Contract regeneration finished');
     }
   };
 
@@ -216,7 +241,8 @@ export default function ContractPage() {
   // Handler to send contract via email
   const [recipientEmail, setRecipientEmail] = useState("");
   const handleSendContract = async () => {
-    if (!contractJson) return;
+    if (!contractJson || isSendingContract) return;
+    
     // Ensure no blanks remain for current party
     const hasBlanks = contractJson.blocks.some((block) =>
       block.signatures.some((s) => s.party === currentParty && s.img_url === "")
@@ -225,6 +251,8 @@ export default function ContractPage() {
       alert("Please sign your designated signature fields (in blue) before sending.");
       return;
     }
+    
+    setIsSendingContract(true);
     try {
       const res = await fetch(`/api/contracts/${params.id}/send`, {
         method: "POST",
@@ -240,6 +268,8 @@ export default function ContractPage() {
     } catch (err) {
       console.error(err);
       alert("Error sending contract.");
+    } finally {
+      setIsSendingContract(false);
     }
   };
 
@@ -305,32 +335,6 @@ export default function ContractPage() {
               ))}
             </div>
 
-            {/* Contract Regeneration Input - Fixed at Bottom */}
-            <div className="mt-4 bg-white rounded-lg p-4 shadow-md">
-              <div className="flex items-center space-x-3">
-                <input
-                  type="text"
-                  value={contractRegenPrompt}
-                  onChange={(e) => setContractRegenPrompt(e.target.value)}
-                  placeholder="Regenerate entire contract..."
-                  className="flex-1 p-3 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleContractRegeneration();
-                    }
-                  }}
-                />
-                <button
-                  onClick={handleContractRegeneration}
-                  className="p-4 bg-black rounded-md hover:bg-gray-900 transition"
-                >
-                  <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11l5-5m0 0l5 5m-5-5v12" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
             {/* Signature Modal */}
             {showSignatureFor && (
               <SignatureModal
@@ -352,14 +356,60 @@ export default function ContractPage() {
 
           {/* Right: PREVIOUSLY A SUMMARY and now a list of unknowns + Send Panel */}
           <div className="w-5/12 h-full flex flex-col">
-            <div className="flex-1 bg-white rounded-lg p-6 shadow-md overflow-y-auto">
-              <h2 className="text-lg font-semibold mb-4">Suggested Information to Add</h2>
-              <ul className="list-disc pl-4 space-y-2">
-                {contractJson?.unknowns?.map((unknown, i) => (
-                  <li key={i} className="text-gray-700">{unknown}</li>
-                )) || <li className="text-gray-500">No missing information</li>}
-              </ul>
+            <div className="flex-1 bg-white rounded-lg p-6 shadow-md flex flex-col">
+              {/* Suggested Information - Scrollable */}
+              <div className="flex-1 overflow-y-auto">
+                <h2 className="text-lg font-semibold mb-4">Suggested Information to Add</h2>
+                <ul className="list-disc pl-4 space-y-2">
+                  {contractJson?.unknowns?.map((unknown, i) => (
+                    <li key={i} className="text-gray-700">{unknown}</li>
+                  )) || <li className="text-gray-500">No missing information</li>}
+                </ul>
+              </div>
+
+              {/* Regenerate Contract - Fixed at Bottom */}
+              <div className="flex-shrink-0 pt-4 mt-4">
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="text"
+                    value={contractRegenPrompt}
+                    onChange={(e) => setContractRegenPrompt(e.target.value)}
+                    placeholder="Regenerate entire contract..."
+                    className="flex-1 p-3 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleContractRegeneration();
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={() => {
+                      console.log('🖱️ Regenerate button clicked, current state:', isRegeneratingContract);
+                      handleContractRegeneration();
+                    }}
+                    disabled={isRegeneratingContract}
+                    className={`p-4 rounded-md transition ${
+                      isRegeneratingContract 
+                        ? 'bg-gray-900 cursor-not-allowed' 
+                        : 'bg-black hover:bg-gray-900'
+                    }`}
+                  >
+                    {(() => {
+                      console.log('🔄 Regenerate button render - isRegeneratingContract:', isRegeneratingContract);
+                      return isRegeneratingContract ? (
+                        <LoadingSpinner />
+                      ) : (
+                        <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11l5-5m0 0l5 5m-5-5v12" />
+                        </svg>
+                      );
+                    })()}
+                  </button>
+                </div>
+              </div>
             </div>
+
+            {/* Recipient Email Input - Fixed at Bottom */}
             <div className="mt-4 bg-white rounded-lg p-6 shadow-md">
               <input
                 type="email"
@@ -367,14 +417,35 @@ export default function ContractPage() {
                 onChange={(e) => setRecipientEmail(e.target.value)}
                 placeholder="Recipient Email"
                 className="w-full p-3 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSendContract();
+                  }
+                }}
               />
               <button
                 onClick={handleSendContract}
-                className="mt-3 w-full py-3 bg-black text-white rounded-md hover:bg-gray-900 transition"
+                disabled={isSendingContract}
+                className={`mt-3 w-full py-3 text-white rounded-md transition flex items-center justify-center ${
+                  isSendingContract 
+                    ? 'bg-gray-600 cursor-not-allowed' 
+                    : 'bg-black hover:bg-gray-900'
+                }`}
               >
-                Send Contract &rarr;
+                {(() => {
+                  console.log('📧 Send button render - isSendingContract:', isSendingContract);
+                  return isSendingContract ? (
+                    <>
+                      <LoadingSpinner size="w-4 h-4" />
+                      <span className="ml-2">Sending...</span>
+                    </>
+                  ) : (
+                    'Send Contract →'
+                  );
+                })()}
               </button>
             </div>
+            
           </div>
         </div>
       )}

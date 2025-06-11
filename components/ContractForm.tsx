@@ -80,6 +80,12 @@ export default function ContractForm() {
               value={party.name}
               onChange={(e) => updateParty(index, 'name', e.target.value)}
               className="p-2 border rounded-md"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleSubmit(e);
+                }
+              }}
               required
             />
             <input
@@ -88,6 +94,12 @@ export default function ContractForm() {
               value={party.email}
               onChange={(e) => updateParty(index, 'email', e.target.value)}
               className="p-2 border rounded-md"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleSubmit(e);
+                }
+              }}
               required
             />
             <input
@@ -96,6 +108,12 @@ export default function ContractForm() {
               value={party.role}
               onChange={(e) => updateParty(index, 'role', e.target.value)}
               className="p-2 border rounded-md"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleSubmit(e);
+                }
+              }}
               required
             />
           </div>
@@ -109,6 +127,12 @@ export default function ContractForm() {
           onChange={(e) => setFormData({ ...formData, terms: e.target.value })}
           className="w-full p-2 border rounded-md h-32"
           placeholder="Describe the main terms, payment details, deliverables, timeline, etc."
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+              e.preventDefault();
+              handleSubmit(e);
+            }
+          }}
           required
         />
       </div>
@@ -120,6 +144,12 @@ export default function ContractForm() {
           onChange={(e) => setFormData({ ...formData, additionalRequirements: e.target.value })}
           className="w-full p-2 border rounded-md h-24"
           placeholder="Any specific clauses or requirements you need"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+              e.preventDefault();
+              handleSubmit(e);
+            }
+          }}
         />
       </div>
 

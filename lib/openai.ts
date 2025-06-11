@@ -91,7 +91,15 @@ function cleanJsonResponse(text: string): string {
 }
 
 export async function generateContractJson(userPrompt: string): Promise<ContractJson> {
+  const currentDate = new Date().toLocaleDateString('en-US', { 
+    year: 'numeric', 
+    month: 'numeric', 
+    day: 'numeric' 
+  });
+  
   const systemPrompt = `
+Today is ${currentDate}.
+
 You are a contract‐writing assistant. When given a user prompt, produce a JSON object exactly matching this schema:
 
 {
@@ -119,17 +127,23 @@ CRITICAL REQUIREMENTS:
 SIGNATURE FIELD REQUIREMENTS - FOLLOW EXACTLY:
 - ONLY use underscores for signature fields - NEVER for dates, names, or other blanks
 - Signature fields must be exactly 20 underscores: ____________________
-- For dates, names, amounts, or other fill-in fields, use brackets like [DATE], [AMOUNT], [PARTY NAME] or write descriptive text
+- For amounts or other fill-in fields, use brackets like [AMOUNT], [PROPERTY ADDRESS] or write descriptive text
 - For EVERY sequence of 20 underscores in the text, you MUST create exactly ONE corresponding signature object
 - The number of signature objects in each block MUST equal the number of 20-underscore sequences in that block's text
 - Each signature object must have: party ("PartyA" or "PartyB"), img_url (empty string ""), index (0, 1, 2... in order of appearance)
 - The "index" field represents the order the signature appears in the text (first underscore sequence = index 0, second = index 1, etc.)
 
+CRITICAL PARTY NAMING RULES:
+- NEVER use "PartyA" or "PartyB" anywhere in the contract text, only in signature objects
+- Within the contract text, use role-based titles that match the contract type: "Contractor", "Client", "Property Owner", "Service Provider", "Roofer", "Tenant", "Landlord", etc.
+- If names are provided in the user prompt, use those actual names instead of generic titles
+- The contract text should refer to parties by their role or name, not generic labels like "PartyA" or "PartyB"
+
 UNDERSCORE USAGE RULES:
-- 20 underscores (____________________) = SIGNATURE FIELD ONLY
-- For date lines: use "Date: [DATE]" or "Date: ____________" (not 20 underscores)
-- For name lines: use "Name: [PARTY NAME]" or write out the actual name
+- 20 underscores (____________________) = SIGNATURE FIELD ONLY (date will be automatically appended to signature image)
 - For amounts: use "[AMOUNT]" or write specific amounts
+- For addresses: use "[PROPERTY ADDRESS]" or write actual address
+- DO NOT include separate date fields near signatures - dates are automatically added to signature images
 - NEVER use 20 underscores for anything except signature collection
 
 VALIDATION CHECK:
@@ -180,7 +194,15 @@ export async function regenerateBlockJson(
   blockIndex: number,
   userInstructions: string
 ): Promise<ContractJson> {
+  const currentDate = new Date().toLocaleDateString('en-US', { 
+    year: 'numeric', 
+    month: 'numeric', 
+    day: 'numeric' 
+  });
+  
   const systemPrompt = `
+Today is ${currentDate}.
+
 You are a contract‐writing assistant. You must return the ENTIRE contract in the EXACT JSON schema format with "blocks" and "unknowns" properties.
 
 Here is the current contract:
@@ -202,18 +224,24 @@ CRITICAL REQUIREMENTS:
 SIGNATURE FIELD REQUIREMENTS - FOLLOW EXACTLY:
 - ONLY use underscores for signature fields - NEVER for dates, names, or other blanks
 - Signature fields must be exactly 20 underscores: ____________________
-- For dates, names, amounts, or other fill-in fields, use brackets like [DATE], [AMOUNT], [PARTY NAME] or write descriptive text
+- For amounts or other fill-in fields, use brackets like [AMOUNT], [PROPERTY ADDRESS] or write descriptive text
 - For EVERY sequence of 20 underscores in the text, you MUST create exactly ONE corresponding signature object
 - The number of signature objects in block ${blockIndex} MUST equal the number of 20-underscore sequences in that block's text
 - Each signature object must have: party ("PartyA" or "PartyB"), img_url (preserve existing or empty string ""), index (0, 1, 2... in order of appearance)
 - The "index" field represents the order the signature appears in the text (first underscore sequence = index 0, second = index 1, etc.)
 - PRESERVE EXISTING img_url VALUES - do not change img_url fields that already contain signature data
 
+CRITICAL PARTY NAMING RULES:
+- NEVER use "PartyA" or "PartyB" anywhere in the contract text, only in signature objects
+- Within the contract text, use role-based titles that match the contract type: "Contractor", "Client", "Property Owner", "Service Provider", "Roofer", "Tenant", "Landlord", etc.
+- If names are provided in the user prompt, use those actual names instead of generic titles
+- The contract text should refer to parties by their role or name, not generic labels like "PartyA" or "PartyB"
+
 UNDERSCORE USAGE RULES:
-- 20 underscores (____________________) = SIGNATURE FIELD ONLY
-- For date lines: use "Date: [DATE]" or "Date: ____________" (not 20 underscores)
-- For name lines: use "Name: [PARTY NAME]" or write out the actual name
+- 20 underscores (____________________) = SIGNATURE FIELD ONLY (date will be automatically appended to signature)
 - For amounts: use "[AMOUNT]" or write specific amounts
+- For addresses: use "[PROPERTY ADDRESS]" or write actual address
+- DO NOT include separate date fields near signatures - dates are automatically added to signature images
 - NEVER use 20 underscores for anything except signature collection
 
 VALIDATION CHECK:
@@ -265,7 +293,15 @@ export async function regenerateContract(
   contractJson: ContractJson,
   userInstructions: string
 ): Promise<ContractJson> {
+  const currentDate = new Date().toLocaleDateString('en-US', { 
+    year: 'numeric', 
+    month: 'numeric', 
+    day: 'numeric' 
+  });
+  
   const systemPrompt = `
+Today is ${currentDate}.
+
 You are a contract‐writing assistant. Here is the existing contract:
 ${JSON.stringify(contractJson, null, 2)}
 
@@ -278,18 +314,25 @@ CRITICAL REQUIREMENTS:
 SIGNATURE FIELD REQUIREMENTS - FOLLOW EXACTLY:
 - ONLY use underscores for signature fields - NEVER for dates, names, or other blanks
 - Signature fields must be exactly 20 underscores: ____________________
-- For dates, names, amounts, or other fill-in fields, use brackets like [DATE], [AMOUNT], [PARTY NAME] or write descriptive text
+- For amounts or other fill-in fields, use brackets like [AMOUNT], [PROPERTY ADDRESS] or write descriptive text
 - For EVERY sequence of 20 underscores in the text, you MUST create exactly ONE corresponding signature object
 - The number of signature objects in each block MUST equal the number of 20-underscore sequences in that block's text
 - Each signature object must have: party ("PartyA" or "PartyB"), img_url (preserve existing or empty string ""), index (0, 1, 2... in order of appearance)
 - The "index" field represents the order the signature appears in the text (first underscore sequence = index 0, second = index 1, etc.)
 - PRESERVE EXISTING img_url VALUES - do not change img_url fields that already contain signature data
 
+CRITICAL PARTY NAMING RULES:
+- NEVER use "PartyA" or "PartyB" anywhere in the contract text, only in signature objects
+- Within the contract text, use role-based titles that match the contract type: "Contractor", "Client", "Property Owner", "Service Provider", "Roofer", "Tenant", "Landlord", etc.
+- If names are provided in the user prompt, use those actual names instead of generic titles
+- The contract text should refer to parties by their role or name, not generic labels like "PartyA" or "PartyB"
+
+
 UNDERSCORE USAGE RULES:
-- 20 underscores (____________________) = SIGNATURE FIELD ONLY
-- For date lines: use "Date: [DATE]" or "Date: ____________" (not 20 underscores)
-- For name lines: use "Name: [PARTY NAME]" or write out the actual name
+- 20 underscores (____________________) = SIGNATURE FIELD ONLY (date will be automatically appended to signature)
 - For amounts: use "[AMOUNT]" or write specific amounts
+- For addresses: use "[PROPERTY ADDRESS]" or write actual address
+- DO NOT include separate date fields near signatures - dates are automatically added to signature images
 - NEVER use 20 underscores for anything except signature collection
 
 VALIDATION CHECK:

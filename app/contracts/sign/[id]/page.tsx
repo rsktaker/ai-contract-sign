@@ -213,7 +213,7 @@ export default function SignContractPage() {
           <div className="mt-4 bg-white rounded-lg p-6 shadow-md flex-shrink-0">
             <button
               onClick={handleFinalizeContract}
-              className="w-full py-4 bg-green-600 text-white rounded-md hover:bg-green-700 transition text-lg font-semibold"
+              className="w-full py-4 bg-black text-white rounded-md hover:bg-gray-900 transition text-lg font-semibold"
             >
               Finalize Contract
             </button>
