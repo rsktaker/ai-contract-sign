@@ -165,6 +165,20 @@ export default function ContractPage() {
     }
   };
 
+  // New handler for manual block edits
+  const handleManualBlockEdit = (blockIndex: number, updatedBlock: any) => {
+    if (!contractJson) return;
+    
+    setContractJson((prev) => {
+      if (!prev) return prev;
+      
+      const updatedBlocks = [...prev.blocks];
+      updatedBlocks[blockIndex] = updatedBlock;
+      
+      return { ...prev, blocks: updatedBlocks };
+    });
+  };
+
   // Handler to update a signature field:
   // First opens SignatureModal to capture a signature
   // Takes the resulting image and saves it as a string in the img_url field of the signature
@@ -330,6 +344,9 @@ export default function ContractPage() {
                   
                   onRegenerate={(userInstructions: string) =>
                     handleRegenerateBlock(i, userInstructions)
+                  }
+                  onManualEdit={(updatedBlock: any) =>
+                    handleManualBlockEdit(i, updatedBlock)
                   }
                 />
               ))}

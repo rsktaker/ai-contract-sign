@@ -99,6 +99,12 @@ export default function NewContractPage() {
             <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmit(e as any);
+                }
+              }}
               className="w-full p-4 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 h-40 resize-none"
               placeholder="Create a freelance contract between ABC Corp and John Smith for website development. $5,000 payment in two milestones, 6-week timeline, includes hosting setup and training."
               required
