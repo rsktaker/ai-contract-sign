@@ -100,7 +100,7 @@ export default function SignContractPage() {
     if (!contractJson) return;
 
     // Check if all signatures for current party are completed
-    const hasBlankSignatures = contractJson.blocks.some((block) =>
+    const hasBlankSignatures = contractJson.blocks.some((block)  =>
       block.signatures.some((s) => s.party === currentParty && s.img_url === "")
     );
 
