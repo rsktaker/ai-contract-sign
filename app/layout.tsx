@@ -7,7 +7,7 @@ import AuthProvider from '@/components/AuthProvider'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Sherkolit - AI-Powered Contract Generation',
+  title: 'DreamSign - AI-Powered Contract Generation',
   description: 'Create professional, legally-structured contracts in minutes with AI',
 }
 
