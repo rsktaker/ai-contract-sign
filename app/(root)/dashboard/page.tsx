@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 
 interface Contract {
   _id: string;
@@ -15,6 +17,8 @@ interface Contract {
   status: string;
   createdAt: string;
   updatedAt: string;
+  createdBy?: string;
+  createdByEmail?: string;
 }
 
 interface ContractStats {
@@ -27,6 +31,8 @@ interface ContractStats {
 }
 
 export default function DashboardContractsView() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const [stats, setStats] = useState<ContractStats>({
     total: 0,
     completed: 0,
@@ -36,34 +42,66 @@ export default function DashboardContractsView() {
     awaitingSignature: []
   });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchContractStats();
-  }, []);
+    // Redirect if not authenticated
+    if (status === 'unauthenticated') {
+      router.push('/auth/signin');
+    }
+  }, [status, router]);
+
+  useEffect(() => {
+    // Only fetch contracts if authenticated
+    if (status === 'authenticated' && session?.user) {
+      fetchContractStats();
+    }
+  }, [status, session]);
 
   const fetchContractStats = async () => {
     try {
-      const response = await fetch('/api/contracts');
-      if (response.ok) {
-        const data = await response.json();
-        const contracts: Contract[] = data.contracts;
+      setError(null);
+      const response = await fetch('/api/contracts', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // Important for session cookies
+      });
 
-        // Calculate statistics
-        const stats: ContractStats = {
-          total: contracts.length,
-          completed: contracts.filter(c => c.status === 'completed').length,
-          pending: contracts.filter(c => c.status === 'pending').length,
-          draft: contracts.filter(c => c.status === 'draft').length,
-          recentActivity: contracts.slice(0, 5), // Top 5 most recent
-          awaitingSignature: contracts
-            .filter(c => c.status === 'pending')
-            .slice(0, 3) // Top 3 pending
-        };
-
-        setStats(stats);
+      if (!response.ok) {
+        if (response.status === 401) {
+          // Unauthorized - redirect to login
+          router.push('/auth/signin');
+          return;
+        }
+        throw new Error('Failed to fetch contracts');
       }
+
+      const data = await response.json();
+      const contracts: Contract[] = data.contracts || [];
+
+      // Filter for contracts where the current user hasn't signed yet
+      const userEmail = session?.user?.email;
+      const contractsAwaitingMySignature = contracts.filter(contract => {
+        const myParty = contract.parties.find(p => p.email === userEmail);
+        return contract.status === 'pending' && myParty && !myParty.signed;
+      });
+
+      // Calculate statistics
+      const stats: ContractStats = {
+        total: contracts.length,
+        completed: contracts.filter(c => c.status === 'completed').length,
+        pending: contracts.filter(c => c.status === 'pending').length,
+        draft: contracts.filter(c => c.status === 'draft').length,
+        recentActivity: contracts.slice(0, 5), // Top 5 most recent
+        awaitingSignature: contractsAwaitingMySignature.slice(0, 3) // Top 3 awaiting user's signature
+      };
+
+      setStats(stats);
     } catch (error) {
       console.error('Error fetching contract stats:', error);
+      setError('Failed to load contracts. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -92,7 +130,8 @@ export default function DashboardContractsView() {
     }
   };
 
-  if (loading) {
+  // Show loading state while checking authentication
+  if (status === 'loading' || (status === 'authenticated' && loading)) {
     return (
       <div className="animate-pulse">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -108,8 +147,40 @@ export default function DashboardContractsView() {
     );
   }
 
+  // Don't render anything if unauthenticated (will redirect)
+  if (status === 'unauthenticated') {
+    return null;
+  }
+
+  // Show error state if there was an error
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-red-600 dark:text-red-400 mb-4">{error}</p>
+        <button
+          onClick={fetchContractStats}
+          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+        >
+          Try Again
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div>
+      {/* Welcome message with user name */}
+      {session?.user?.name && (
+        <div className="mb-6">
+          <h2 className="text-2xl font-semibold" style={{ color: 'var(--foreground)' }}>
+            Welcome back, {session.user.name}!
+          </h2>
+          <p style={{ color: 'var(--foreground)', opacity: 0.7 }}>
+            Here's your contract overview
+          </p>
+        </div>
+      )}
+
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div 
@@ -125,7 +196,7 @@ export default function DashboardContractsView() {
                 className="text-sm font-medium"
                 style={{ color: 'var(--foreground)', opacity: 0.7 }}
               >
-                Total Contracts
+                Your Contracts
               </p>
               <p className="text-2xl font-semibold mt-1" style={{ color: 'var(--foreground)' }}>
                 {stats.total}
@@ -245,7 +316,7 @@ export default function DashboardContractsView() {
 
           {stats.recentActivity.length === 0 ? (
             <p style={{ color: 'var(--foreground)', opacity: 0.5 }}>
-              No recent contracts
+              No contracts yet. Create your first contract to get started!
             </p>
           ) : (
             <div className="space-y-3">
@@ -297,7 +368,7 @@ export default function DashboardContractsView() {
         >
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold" style={{ color: 'var(--foreground)' }}>
-              Awaiting Signatures
+              Awaiting Your Signature
             </h3>
             <Link 
               href="/contracts?filter=pending" 
@@ -309,7 +380,7 @@ export default function DashboardContractsView() {
 
           {stats.awaitingSignature.length === 0 ? (
             <p style={{ color: 'var(--foreground)', opacity: 0.5 }}>
-              No contracts awaiting signatures
+              No contracts awaiting your signature
             </p>
           ) : (
             <div className="space-y-3">
@@ -328,13 +399,13 @@ export default function DashboardContractsView() {
                       className="text-sm"
                       style={{ color: 'var(--foreground)', opacity: 0.7 }}
                     >
-                      Waiting for {contract.parties.filter(p => !p.signed).length} signature(s)
+                      Action required
                     </p>
                     <Link
                       href={`/contracts/${contract._id}`}
                       className="text-sm px-3 py-1 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 transition-colors"
                     >
-                      Review
+                      Review & Sign
                     </Link>
                   </div>
                 </div>

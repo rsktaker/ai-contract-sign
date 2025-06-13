@@ -1,10 +1,23 @@
+// app/api/contracts/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import mongoose from 'mongoose';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth';
 
-// GET /api/contracts - Fetch all contracts
+// GET /api/contracts - Fetch contracts for authenticated user
 export async function GET(request: NextRequest) {
   try {
+    // Get the session to check if user is authenticated
+    const session = await getServerSession(authOptions);
+    
+    if (!session || !session.user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     // Connect to database
     await connectToDatabase();
     
@@ -20,9 +33,20 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch all contracts, sorted by creation date (newest first)
+    // Fetch contracts where the user is a party
+    const userEmail = session.user.email;
+    const userId = session.user.id;
+
+    // Query for contracts where either:
+    // 1. The user is in the parties array (by email)
+    // 2. The user is the creator (if you have a createdBy field)
     const contracts = await db.collection('contracts')
-      .find({})
+      .find({
+        $or: [
+          { 'parties.email': userEmail },
+          { createdBy: userId } // Optional: if you track who created the contract
+        ]
+      })
       .sort({ createdAt: -1 })
       .toArray();
 
@@ -39,6 +63,16 @@ export async function GET(request: NextRequest) {
 // POST /api/contracts - Create a new contract
 export async function POST(request: NextRequest) {
   try {
+    // Get the session to check if user is authenticated
+    const session = await getServerSession(authOptions);
+    
+    if (!session || !session.user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
 
     // Validate required fields
@@ -79,7 +113,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Prepare contract data
+    // Prepare contract data with creator information
     const newContract = {
       title: body.title,
       content: body.content,
@@ -91,6 +125,8 @@ export async function POST(request: NextRequest) {
         signedAt: null
       })),
       status: 'draft',
+      createdBy: session.user.id, // Track who created the contract
+      createdByEmail: session.user.email,
       createdAt: new Date(),
       updatedAt: new Date()
     };
