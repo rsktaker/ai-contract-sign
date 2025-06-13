@@ -21,6 +21,9 @@ interface ContractJson {
   blocks: ContractBlock[];
   unknowns: string[];
   assessment: string;
+  title?: string;
+  type?: string;
+  parties?: string[];
 }
 
 try {
