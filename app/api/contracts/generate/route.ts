@@ -1,21 +1,20 @@
+// Test code to bypass authentication
 import { NextRequest, NextResponse } from 'next/server';
 import { generateContractJson } from '@/lib/openai';
 import Contract from '@/models/Contract';
 import { connectToDatabase } from '@/lib/mongodb';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
+import mongoose from 'mongoose';
+// import { getServerSession } from 'next-auth'; // Commented out for testing
 
 export async function POST(request: NextRequest) {
   try {
-    // Get the session to check if user is authenticated
-    const session = await getServerSession(authOptions);
-    
-    if (!session || !session.user || !session.user.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized - Please sign in to generate contracts' }, 
-        { status: 401 }
-      );
+    // TESTING MODE - Comment out auth check
+    /*
+    const session = await getServerSession();
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    */
     
     await connectToDatabase();
    
@@ -23,24 +22,19 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { prompt } = body;
     
-    if (!prompt) {
-      return NextResponse.json(
-        { error: 'Prompt is required' },
-        { status: 400 }
-      );
-    }
-    
-    // Generate contract using GPT, retrieve it as a JSON object
+    // Generate contract using GPT, retreive it as a JSON object
     const contractJson = await generateContractJson(prompt);
     
-    // Save to database with the authenticated user's ID
+    // Create a valid ObjectId for testing
+    const testUserId = new mongoose.Types.ObjectId();
+    
+    // Save to database with all required fields
     const contract = await Contract.create({
-      userId: session.user.id, // Use the actual authenticated user's ID
-      title: contractJson.title || `Contract - ${new Date().toLocaleDateString()}`,
-      type: contractJson.type || 'custom',
+      userId: testUserId,
+      title: `Contract - ${new Date().toLocaleDateString()}`,
+      type: 'custom',
       requirements: prompt,
       content: JSON.stringify(contractJson),
-      parties: contractJson.parties || [], // Include parties if generated
       status: 'draft'
     });
     
