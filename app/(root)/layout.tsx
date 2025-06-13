@@ -1,20 +1,28 @@
+'use client'
+
 // app/(root)/layout.tsx
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { getServerSession } from 'next-auth'
+import { useSession } from 'next-auth/react'
+import { useEffect } from 'react'
 // Import your auth config/options as needed
 // import { authOptions } from '@/lib/auth'
 
-export default async function AuthenticatedLayout({
+export default function AuthenticatedLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  // Check if user is authenticated
-  const session = await getServerSession(/* authOptions */)
+  const { data: session, status } = useSession()
   
-  if (!session) {
-    redirect('/auth/signin')
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      redirect('/auth/signin')
+    }
+  }, [status])
+
+  if (status === 'loading') {
+    return <div>Loading...</div>
   }
 
   return (
