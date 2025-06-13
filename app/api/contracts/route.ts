@@ -36,19 +36,28 @@ export async function GET(request: NextRequest) {
     // Fetch contracts where the user is a party
     const userEmail = session.user.email;
     const userId = session.user.id;
+    console.log("UserId: ", userId);
+
+    // Convert userId to ObjectId if it's a valid ObjectId string
+    let userIdQuery = userId;
+    if (mongoose.Types.ObjectId.isValid(userId)) {
+      userIdQuery = new mongoose.Types.ObjectId(userId);
+    }
 
     // Query for contracts where either:
     // 1. The user is in the parties array (by email)
-    // 2. The user is the creator (if you have a createdBy field)
+    // 2. The user is the creator (by userId - now as ObjectId)
     const contracts = await db.collection('contracts')
       .find({
         $or: [
           { 'parties.email': userEmail },
-          { createdBy: userId } // Optional: if you track who created the contract
+          { userId: userIdQuery } // Now using ObjectId
         ]
       })
       .sort({ createdAt: -1 })
       .toArray();
+
+    console.log(`Found ${contracts.length} contracts for user`);
 
     return NextResponse.json({ contracts }, { status: 200 });
   } catch (error) {
@@ -75,10 +84,19 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
-    // Validate required fields
-    if (!body.title || !body.content || !body.parties || !Array.isArray(body.parties)) {
+    // Validate required fields (including type and requirements)
+    if (!body.title || !body.content || !body.type || !body.requirements || !body.parties || !Array.isArray(body.parties)) {
       return NextResponse.json(
-        { error: 'Missing required fields: title, content, and parties array are required' },
+        { error: 'Missing required fields: title, content, type, requirements, and parties array are required' },
+        { status: 400 }
+      );
+    }
+
+    // Validate type enum
+    const validTypes = ['service', 'nda', 'employment', 'lease', 'custom'];
+    if (!validTypes.includes(body.type)) {
+      return NextResponse.json(
+        { error: 'Invalid contract type. Must be one of: service, nda, employment, lease, custom' },
         { status: 400 }
       );
     }
@@ -97,7 +115,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           { error: 'Each party must have name, email, and role' },
           { status: 400 }
-        );
+      );
       }
     }
 
@@ -113,20 +131,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Prepare contract data with creator information
+    // Convert userId to ObjectId for consistency
+    const userId = session.user.id;
+    let userIdToStore = userId;
+    if (mongoose.Types.ObjectId.isValid(userId)) {
+      userIdToStore = new mongoose.Types.ObjectId(userId);
+    }
+
+    // Prepare contract data with userId as ObjectId
     const newContract = {
+      userId: userIdToStore, // Store as ObjectId for consistency
       title: body.title,
+      type: body.type,
+      requirements: body.requirements,
       content: body.content,
       parties: body.parties.map((party: any) => ({
         name: party.name,
         email: party.email,
         role: party.role,
         signed: false,
-        signedAt: null
+        signatureId: null
       })),
       status: 'draft',
-      createdBy: session.user.id, // Track who created the contract
-      createdByEmail: session.user.email,
       createdAt: new Date(),
       updatedAt: new Date()
     };
