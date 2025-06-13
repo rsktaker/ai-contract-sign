@@ -140,7 +140,7 @@ export default function ContractsPage() {
             <h1 className="text-2xl font-semibold" style={{ color: 'var(--foreground)' }}>
               Documents
             </h1>
-            <Link
+            {/* <Link
               href="/contracts/new"
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium flex items-center"
             >
@@ -148,7 +148,7 @@ export default function ContractsPage() {
                 <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
               </svg>
               New Contract
-            </Link>
+            </Link> */}
           </div>
         </div>
       </div>
@@ -235,7 +235,7 @@ export default function ContractsPage() {
         {filteredContracts.length === 0 ? (
           <div className="text-center py-16">
             <div className="mx-auto w-24 h-24 mb-4 text-gray-300 dark:text-gray-600">
-              {getDocumentIcon()}
+              {getDocumentIcon()}cl
             </div>
             <p className="text-lg font-medium mb-2" style={{ color: 'var(--foreground)' }}>
               No {filterStatus !== 'all' ? filterStatus : ''} contracts found
