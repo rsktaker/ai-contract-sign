@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 
+
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY, // Replace with your actual OpenAI API key
 });
@@ -19,6 +20,12 @@ interface ContractBlock {
 interface ContractJson {
   blocks: ContractBlock[];
   unknowns: string[];
+}
+
+try {
+
+} catch(error) {
+
 }
 
 export async function generateContract(requirements: {
