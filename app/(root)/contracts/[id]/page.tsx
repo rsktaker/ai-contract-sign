@@ -34,6 +34,7 @@ interface ContractBlock {
 interface ContractJson {
   blocks: ContractBlock[];
   unknowns: string[];
+  assessment?: string;
 }
 
 // Skeleton loader components
@@ -376,12 +377,19 @@ export default function ContractPage() {
             <div className="flex-1 bg-white rounded-lg p-6 shadow-md flex flex-col">
               {/* Suggested Information - Scrollable */}
               <div className="flex-1 overflow-y-auto">
-                <h2 className="text-lg font-semibold mb-4">Suggested Information to Add</h2>
-                <ul className="list-disc pl-4 space-y-2">
+                <h2 className="text-lg font-semibold mb-4">Missing Information</h2>
+                <ul className="list-disc pl-4 space-y-2 mb-4">
                   {contractJson?.unknowns?.map((unknown, i) => (
                     <li key={i} className="text-gray-700">{unknown}</li>
                   )) || <li className="text-gray-500">No missing information</li>}
                 </ul>
+                
+                {/* AI Assessment */}
+                {contractJson?.assessment && (
+                  <div className="p-4 bg-gray-50">
+                    <p className="text-sm text-gray-700">{contractJson.assessment}</p>
+                  </div>
+                )}
               </div>
 
               {/* Regenerate Contract - Fixed at Bottom */}

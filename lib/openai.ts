@@ -20,6 +20,7 @@ interface ContractBlock {
 interface ContractJson {
   blocks: ContractBlock[];
   unknowns: string[];
+  assessment: string;
 }
 
 try {
@@ -124,7 +125,8 @@ You are a contract‐writing assistant. When given a user prompt, produce a JSON
     },
     ...
   ],
-  "unknowns": string[] // A list of ESSENTIAL, CRITICAL, MANDATORY pieces of information that you DESPERATELY NEED to complete the contract. Do NOT inlude any information that the contract can be created WITHOUT.
+  "unknowns": string[], // A list of ESSENTIAL, CRITICAL, MANDATORY pieces of information that you DESPERATELY NEED to complete the contract. Do NOT inlude any information that the contract can be created WITHOUT.
+  "assessment": string  // A 25-word assessment of the contract's validity, quality, and legal soundness. Be honest and highlight any potential issues or missing elements.
 }
 
 CRITICAL REQUIREMENTS:
@@ -139,18 +141,24 @@ SIGNATURE FIELD REQUIREMENTS - FOLLOW EXACTLY:
 - The number of signature objects in each block MUST equal the number of 20-underscore sequences in that block's text
 - Each signature object must have: party ("PartyA" or "PartyB"), img_url (empty string ""), index (0, 1, 2... in order of appearance)
 - The "index" field represents the order the signature appears in the text (first underscore sequence = index 0, second = index 1, etc.)
+- For each signature field, include the following format in the text:
+  [NAME]
+  ____________________
+  Date: [DATE]
+  Where:
+  - [NAME] MUST be filled with the actual name of the party if provided in the user prompt. If not provided, request the name by including it within the unknowns list.
+  - [DATE] MUST be filled with today's date (${currentDate}) for PartyA's signature. For PartyB's signature, leave as "Date" since they haven't signed yet.
 
 CRITICAL PARTY NAMING RULES:
 - NEVER use "PartyA" or "PartyB" anywhere in the contract text, only in signature objects
 - Within the contract text, use role-based titles that match the contract type: "Contractor", "Client", "Property Owner", "Service Provider", "Roofer", "Tenant", "Landlord", etc.
-- If names are provided in the user prompt, use those actual names instead of generic titles
+- If names are provided in the user prompt, use those actual names instead of generic "PartyA" or "PartyB"
 - The contract text should refer to parties by their role or name, not generic labels like "PartyA" or "PartyB"
 
 UNDERSCORE USAGE RULES:
-- 20 underscores (____________________) = SIGNATURE FIELD ONLY (date will be automatically appended to signature image)
+- 20 underscores (____________________) = SIGNATURE FIELD ONLY
 - For amounts: use "[AMOUNT]" or write specific amounts
 - For addresses: use "[PROPERTY ADDRESS]" or write actual address
-- DO NOT include separate date fields near signatures - dates are automatically added to signature images
 - NEVER use 20 underscores for anything except signature collection
 
 VALIDATION CHECK:
@@ -158,9 +166,16 @@ VALIDATION CHECK:
 - Ensure the signatures array has exactly that many objects
 - NO MISMATCHES ALLOWED
 
-- You can use newlines (\\n) within contract text for better formatting and readability
+- You can use newlines (\\n) for better formatting
 - Make sure the contract is comprehensive and professional
 - Make sure the list of unknowns is as short as possible, consisting of ONLY the most essential, critical, mandatory pieces of information that the contract cannot be created without.
+
+CONTRACT ASSESSMENT REQUIREMENTS:
+- Provide a 50-word assessment of the contract's validity, quality, and legal soundness
+- Be honest and direct about any potential issues or missing elements
+- Highlight any areas that might need legal review
+- Mention if the contract is missing standard clauses for its type
+- Note if any terms are unclear or potentially problematic
 
 IMPORTANT - USE SPECIFIC DETAILS FROM USER PROMPT:
 - If the user mentions specific names (like "Tayler", "John", "Sarah"), use those names directly in the contract text instead of generic "PartyA" or "PartyB"

@@ -14,20 +14,8 @@ export default function NewContractPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [prompt, setPrompt] = useState("");
-  const [contractType, setContractType] = useState("auto-detect");
 
-  const contractTypes = {
-    "auto-detect": "Auto-detect from prompt",
-    service: "Service Agreement",
-    nda: "Non-Disclosure Agreement",
-    employment: "Employment Contract",
-    lease: "Lease Agreement",
-    partnership: "Partnership Agreement",
-    consulting: "Consulting Agreement",
-    freelance: "Freelance Contract",
-    vendor: "Vendor Agreement",
-    custom: "Custom Contract",
-  };
+ 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

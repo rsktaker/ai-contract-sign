@@ -33,19 +33,15 @@ export default function ContractBlock({
     });
 
     while ((match = underscorePattern.exec(text)) !== null) {
-      // Safety check: make sure we have a signature for this match
       if (whichSignature >= block.signatures.length) {
-        console.warn(`No signature found for underscore match at index ${whichSignature}`, {
-          whichSignature,
-          signaturesLength: block.signatures.length,
-          underscorePosition: match.index
-        });
+        console.warn(`No signature found for underscore match at index ${whichSignature}`);
         break;
       }
 
       const signature = block.signatures[whichSignature];
       const isCurrentParty = signature.party === currentParty;
       const bgClass = isCurrentParty ? "bg-blue-100 hover:bg-blue-200" : "bg-red-100 hover:bg-red-200";
+      const today = new Date().toLocaleDateString();
 
       // Add text before the underscores (preserve newlines)
       if (match.index > lastIndex) {
