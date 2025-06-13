@@ -1,12 +1,12 @@
 import mongoose from 'mongoose';
 
 const ContractSchema = new mongoose.Schema({
-  
-  title: {userId: {
+  userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
+  title: {
     type: String,
     required: true
   },
@@ -40,15 +40,9 @@ const ContractSchema = new mongoose.Schema({
     type: String,
     enum: ['draft', 'pending', 'signed', 'completed'],
     default: 'draft'
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
   }
+}, {
+  timestamps: true  // This automatically adds createdAt and updatedAt
 });
 
 export default mongoose.models.Contract || mongoose.model('Contract', ContractSchema);
